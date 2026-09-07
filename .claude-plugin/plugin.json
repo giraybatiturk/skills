@@ -1,7 +1,7 @@
 {
   "name": "giraybatiturk-skills",
-  "version": "0.1.0",
-  "description": "Skills for Real AI Product Leads: özellik kapısı, modül/tasarım/performans denetimi, tasarım kuralları.",
+  "version": "0.2.0",
+  "description": "Skills for Real AI Product Leads: ürün kapısı, modül/tasarım/performans denetimi, tasarım kuralları; grilling, spec/ticket, TDD, code review ve triage akışı (mattpocock/skills uyarlaması).",
   "author": {
     "name": "Giray Batıtürk",
     "url": "https://giraybatiturk.com"
@@ -11,6 +11,10 @@
     "gelistirme",
     "tasarim",
     "denetim",
+    "muhendislik",
+    "tdd",
+    "code-review",
+    "grilling",
     "turkce"
   ],
   "skills": [
@@ -19,6 +23,20 @@
     "./skills/gelistirme/modul-kontrol",
     "./skills/gelistirme/perf-kontrol",
     "./skills/tasarim/tasarim-kontrol",
-    "./skills/tasarim/tasarim-kurallari"
-  ]
+    "./skills/tasarim/tasarim-kurallari",
+    "./skills/muhendislik/grilling",
+    "./skills/muhendislik/grill-me",
+    "./skills/muhendislik/grill-with-docs",
+    "./skills/muhendislik/to-spec",
+    "./skills/muhendislik/to-tickets",
+    "./skills/muhendislik/implement",
+    "./skills/muhendislik/tdd",
+    "./skills/muhendislik/code-review",
+    "./skills/muhendislik/diagnosing-bugs",
+    "./skills/muhendislik/triage",
+    "./skills/muhendislik/prototype",
+    "./skills/muhendislik/research",
+    "./skills/muhendislik/setup"
+  ],
+  "license": "MIT"
 }
