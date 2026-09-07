@@ -1,86 +1,96 @@
 # Skills for Real AI Product Leads
 
-Bir AI Product Lead'in her gün kullandığı skill'ler: fikri keskinleştir, kod yazmadan önce kapıdan geçir, spec ve ticket'a böl, test önce yaz, bitince modülü, ekranı ve bundle'ı denetle. Küçük, Türkçe, ölçüme dayalı: tahmin değil envanter, mutlu yol değil sekiz sınıf senaryo.
+The skills I run every day as an AI product lead who also ships: sharpen the idea, gate it before any code, split it into spec and tickets, test first, then audit the module, the screen and the bundle. Small, composable, built on measurement rather than guesswork.
 
-Mühendislik akışı [mattpocock/skills](https://github.com/mattpocock/skills)'ten (MIT) uyarlandı; ürün kapısı ve denetim skill'leri bu repoya özgü.
+The engineering flow is adapted from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT). The product gate and the audits are what I added on top: the parts an engineering-only flow leaves to production to discover.
 
-## Kurulum
+Live listing: [giraybatiturk.com/skills](https://giraybatiturk.com/skills)
 
-Claude Code, plugin olarak (güncellemeler otomatik gelir):
+## Install
+
+Claude Code, as a plugin (updates arrive automatically):
 
 ```
 /plugin marketplace add giraybatiturk/skills
 /plugin install giraybatiturk-skills@giraybatiturk
 ```
 
-Codex ve diğer ajanlar, ya da düzenlenebilir kopya isteyenler:
+Codex and other agents, or an editable copy you own:
 
 ```bash
 npx skills@latest add giraybatiturk/skills
 ```
 
-Kurulumdan sonra repoda bir kez `/setup` çalıştır: issue tracker, triage etiketleri ve domain doküman düzeni.
+Then, once per repo, run `/setup`: it picks the issue tracker, triage labels and the domain-doc layout the flow reads from.
 
-## Öne çıkanlar
+## Get oriented
 
-- **`/giray`**: nereden başlayacağını bilmiyorsan. Tüm akışın haritası.
-- **`/yeni-ozellik`**: kod yazmadan önce. Niyet, ölçüm, sekiz sınıf senaryo, beş başlık, onay kapısı.
-- **`/grill-with-docs`**: fikri röportajla keskinleştir, `CONTEXT.md` ve ADR bırak.
-- **`/modul-kontrol`**: yazılmış modülde eksik senaryo avı.
-- **`/tasarim-kontrol`**: ekranı DESIGN.md'ye karşı 9 boyutta puanla.
-- **`/tdd`**: kırmızı-yeşil-refactor, dilim dilim.
-
-## Skill seti
-
-### Ürün kapısı ve denetim (`skills/gelistirme`, `skills/tasarim`)
-
-| Skill | Ne zaman | Çağıran |
-|---|---|---|
-| [giray](./skills/gelistirme/giray/SKILL.md) | Hangisini kullanacağını bilmiyorsan | sen |
-| [yeni-ozellik](./skills/gelistirme/yeni-ozellik/SKILL.md) | Kod yazmadan önce | sen |
-| [modul-kontrol](./skills/gelistirme/modul-kontrol/SKILL.md) | Yazılmış modülde eksik senaryo avı | sen |
-| [perf-kontrol](./skills/gelistirme/perf-kontrol/SKILL.md) | Bağımlılık eklenince, yayın öncesi | sen |
-| [tasarim-kontrol](./skills/tasarim/tasarim-kontrol/SKILL.md) | Ekran bitince, DESIGN.md denetimi | sen |
-| [tasarim-kurallari](./skills/tasarim/tasarim-kurallari/SKILL.md) | Her UI işinde | model |
-
-### Mühendislik akışı (`skills/muhendislik`, mattpocock/skills uyarlaması)
-
-| Skill | Ne zaman | Çağıran |
-|---|---|---|
-| [setup](./skills/muhendislik/setup/SKILL.md) | Repoda bir kez: tracker, etiket, doküman düzeni | sen |
-| [grill-with-docs](./skills/muhendislik/grill-with-docs/SKILL.md) | Fikri keskinleştir, repo içinde | sen |
-| [grill-me](./skills/muhendislik/grill-me/SKILL.md) | Aynı röportaj, repo yokken | sen |
-| [to-spec](./skills/muhendislik/to-spec/SKILL.md) | Sohbeti spec'e çevir | sen |
-| [to-tickets](./skills/muhendislik/to-tickets/SKILL.md) | Spec'i bloklama kenarlı ticket'lara böl | sen |
-| [implement](./skills/muhendislik/implement/SKILL.md) | Ticket'ı uygula, içinde tdd + code-review | sen |
-| [triage](./skills/muhendislik/triage/SKILL.md) | Gelen bug/istek yığınını rollere ayır | sen |
-| [grilling](./skills/muhendislik/grilling/SKILL.md) | Röportaj ilkeli, diğerleri bunu çağırır | model |
-| [tdd](./skills/muhendislik/tdd/SKILL.md) | Test önce, dilim dilim | model |
-| [code-review](./skills/muhendislik/code-review/SKILL.md) | Standart + spec iki eksende diff incelemesi | model |
-| [diagnosing-bugs](./skills/muhendislik/diagnosing-bugs/SKILL.md) | Zor bug: önce kırmızı veren döngü, sonra teori | model |
-| [prototype](./skills/muhendislik/prototype/SKILL.md) | Tek soruya cevap veren atılabilir kod | model |
-| [research](./skills/muhendislik/research/SKILL.md) | Birincil kaynaklardan araştırma, dosyaya | model |
-
-"sen" = `disable-model-invocation: true`, yalnız `/ad` ile çalışır. "model" = konu eşleşince kendiliğinden yüklenir.
-
-## Nereden başlanır
+Don't know where to begin? `/start` is the map. The main route most work travels:
 
 ```
-fikir      /grill-with-docs        fikri keskinleştir, CONTEXT.md
-kapı       /yeni-ozellik           beş başlık, sekiz sınıf senaryo, onay
-plan       /to-spec  →  /to-tickets
-kod        /implement              içinde /tdd ve /code-review
-denetim    /modul-kontrol  →  /tasarim-kontrol  →  /perf-kontrol
-bug        /diagnosing-bugs        sonra /modul-kontrol: kardeşi var mı
+idea       /grill-with-docs      sharpen the idea by interview; leaves CONTEXT.md + ADRs
+gate       /feature-gate         five headings, eight scenario classes, approval; no code yet
+plan       /to-spec → /to-tickets   for multi-session work; single-session goes straight to /implement
+build      /implement            drives /tdd and /code-review
+audit      /module-audit → /design-audit → /perf-audit
 ```
 
-1-3 arası tek bağlam penceresinde kalır; `/to-tickets`'a kadar compact/clear yok. Her `/implement` sıfırdan başlar.
+Idea, gate and plan stay in one context window; no compact or clear until `/to-tickets` is done. Each `/implement` starts fresh from its ticket.
 
-## Proje bağımlılığı
+On-ramps: a pile of incoming issues → `/triage`; something broken → `/diagnosing-bugs`, then `/module-audit` to find its siblings; a question that needs running code → `/prototype`.
 
-Denetim skill'leri projenin `DESIGN.md` ve `AGENTS.md`/`CLAUDE.md` dosyalarını kural kaynağı sayar; yoksa `tasarim-kurallari` taban olur. Mühendislik skill'leri `docs/agents/` altını okur; `/setup` yazar.
+## Featured
 
-## Değişiklikler
+- **`/feature-gate`**: before writing code. Intent, measurement, eight scenario classes (permissions, state transitions, error paths, empty states, multi-user, third parties, contract consistency, deployment), five scope headings, approval gate.
+- **`/module-audit`**: the missing-scenario hunt in a module that already exists. Inventories endpoints, permissions and error codes from the code; outputs a permission matrix and a release order.
+- **`/design-audit`**: one screen against the project's DESIGN.md, from a screenshot plus the code, scored across nine dimensions.
+- **`/grill-with-docs`**: the relentless interview that sharpens an idea and leaves a domain model behind.
+- **`/tdd`**: red-green-refactor, one vertical slice at a time.
 
-- **0.2.0** (2026-09-07): mattpocock/skills'ten 13 skill `skills/muhendislik/` altına alındı, her birine Giray uyarlaması bloğu; `ask-matt` yerine `giray`; `setup-matt-pocock-skills` → `setup`; MIT lisans.
-- **0.1.0** (2026-09-07): ilk set, 6 skill.
+## The skill set
+
+### Product gate and audits (`skills/product`)
+
+| Skill | When | Invoked by |
+|---|---|---|
+| [start](./skills/product/start/SKILL.md) | You don't know which one | you |
+| [feature-gate](./skills/product/feature-gate/SKILL.md) | Before writing code | you |
+| [module-audit](./skills/product/module-audit/SKILL.md) | Missing scenarios in a built module | you |
+| [perf-audit](./skills/product/perf-audit/SKILL.md) | Dependency added, before release | you |
+
+### Design (`skills/design`)
+
+| Skill | When | Invoked by |
+|---|---|---|
+| [design-audit](./skills/design/design-audit/SKILL.md) | Screen is done; DESIGN.md check | you |
+| [design-rules](./skills/design/design-rules/SKILL.md) | Any UI work | model |
+
+### Engineering flow (`skills/engineering`, adapted from mattpocock/skills)
+
+| Skill | When | Invoked by |
+|---|---|---|
+| [setup](./skills/engineering/setup/SKILL.md) | Once per repo: tracker, labels, doc layout | you |
+| [grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md) | Sharpen the idea, inside a repo | you |
+| [grill-me](./skills/engineering/grill-me/SKILL.md) | Same interview, no repo | you |
+| [to-spec](./skills/engineering/to-spec/SKILL.md) | Turn the conversation into a spec | you |
+| [to-tickets](./skills/engineering/to-tickets/SKILL.md) | Split a spec into tickets with blocking edges | you |
+| [implement](./skills/engineering/implement/SKILL.md) | Build a ticket, with tdd + code-review inside | you |
+| [triage](./skills/engineering/triage/SKILL.md) | Move incoming issues through triage roles | you |
+| [grilling](./skills/engineering/grilling/SKILL.md) | The interview primitive the others call | model |
+| [tdd](./skills/engineering/tdd/SKILL.md) | Test first, slice by slice | model |
+| [code-review](./skills/engineering/code-review/SKILL.md) | Two-axis review of a diff: standards + spec | model |
+| [diagnosing-bugs](./skills/engineering/diagnosing-bugs/SKILL.md) | Hard bugs: a red loop first, theories second | model |
+| [prototype](./skills/engineering/prototype/SKILL.md) | Throwaway code that answers one question | model |
+| [research](./skills/engineering/research/SKILL.md) | Primary-source research, written to a file | model |
+
+"you" = `disable-model-invocation: true`; runs only when you type `/name`. "model" = picked up when the topic matches.
+
+## Project dependencies
+
+The audits treat the project's `DESIGN.md` and `AGENTS.md`/`CLAUDE.md` as the source of rules; without a `DESIGN.md`, `design-rules` is the baseline. The engineering skills read `docs/agents/`, which `/setup` writes.
+
+## Changelog
+
+- **0.3.0** (2026-09-07): English throughout. Skills renamed (`start`, `feature-gate`, `module-audit`, `perf-audit`, `design-audit`, `design-rules`); folders `product/`, `design/`, `engineering/`. README in the shape of a skills page: install, get oriented, featured, the set.
+- **0.2.0** (2026-09-07): 13 skills from mattpocock/skills under the engineering flow, each with an adaptation block; `start` replaces `ask-matt`; `setup` replaces `setup-matt-pocock-skills`; MIT.
+- **0.1.0** (2026-09-07): first set, 6 skills.
