@@ -1,6 +1,6 @@
-# skills
+# Skills for Real AI Product Leads
 
-Giray'ın her projede kullandığı skill'ler. Küçük, Türkçe, ölçüme dayalı: tahmin değil envanter, mutlu yol değil sekiz sınıf senaryo.
+Bir AI Product Lead'in her projede kullandığı skill'ler: ürün kararı, kod ve tasarım tek akışta. Küçük, Türkçe, ölçüme dayalı: tahmin değil envanter, mutlu yol değil sekiz sınıf senaryo.
 
 ## Kurulum
 

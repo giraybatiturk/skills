@@ -1,10 +1,18 @@
 {
   "name": "giraybatiturk-skills",
   "version": "0.1.0",
-  "description": "Giray Batıtürk'ün iş akışı skill'leri: özellik başlangıç kapısı, modül senaryo denetimi, tasarım ve performans kontrolü, bağlayıcı tasarım kuralları.",
-  "author": { "name": "Giray Batıtürk", "url": "https://giraybatiturk.com" },
+  "description": "Skills for Real AI Product Leads: özellik kapısı, modül/tasarım/performans denetimi, tasarım kuralları.",
+  "author": {
+    "name": "Giray Batıtürk",
+    "url": "https://giraybatiturk.com"
+  },
   "repository": "https://github.com/giraybatiturk/skills",
-  "keywords": ["gelistirme", "tasarim", "denetim", "turkce"],
+  "keywords": [
+    "gelistirme",
+    "tasarim",
+    "denetim",
+    "turkce"
+  ],
   "skills": [
     "./skills/gelistirme/giray",
     "./skills/gelistirme/yeni-ozellik",
