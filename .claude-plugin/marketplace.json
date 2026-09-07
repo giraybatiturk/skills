@@ -1,0 +1,14 @@
+{
+  "name": "giraybatiturk",
+  "owner": { "name": "Giray Batıtürk", "url": "https://giraybatiturk.com" },
+  "description": "Giray'ın kişisel skill seti, Claude Code plugin olarak.",
+  "plugins": [
+    {
+      "name": "giraybatiturk-skills",
+      "source": "./",
+      "description": "Özellik kapısı, modül/tasarım/performans denetimi ve tasarım kuralları.",
+      "category": "engineering",
+      "keywords": ["gelistirme", "tasarim", "denetim"]
+    }
+  ]
+}
