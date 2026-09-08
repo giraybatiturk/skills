@@ -8,7 +8,7 @@ disable-model-invocation: true
 > - Measure, don't guess: evidence from the repo and the running system; write "could not measure" when you couldn't.
 > - New features go through the `/real-feature-gate` five-heading gate before any code; this skill does not replace that gate.
 > - Issue tracker and labels are read from `docs/agents/` (`/real-setup`).
-> - `/real-start` is the map of the whole flow; `/real-start` and `/start` no longer exist.
+> - `/real-start` is the map of the whole flow; upstream's `/start` and `/setup` no longer exist.
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
 

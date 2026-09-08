@@ -21,7 +21,18 @@ Codex and other agents, or an editable copy you own:
 npx skills@latest add giraybatiturk/skills
 ```
 
-Then, once per repo, run `/real-setup`: it picks the issue tracker, triage labels and the domain-doc layout the flow reads from.
+## First run
+
+Two commands, in this order:
+
+```
+/real-start      the map: what each skill does and which one fits your situation
+/real-setup      once per repo: issue tracker, triage labels, domain-doc layout
+```
+
+`/real-start` also takes the task directly, e.g. `/real-start audit the messaging module`, and picks the right skill for you.
+
+Every skill in this set is prefixed `real-`, so typing `/real-` lists them all.
 
 ## Get oriented
 
@@ -91,6 +102,7 @@ The audits treat the project's `DESIGN.md` and `AGENTS.md`/`CLAUDE.md` as the so
 
 ## Changelog
 
+- **0.4.0** (2026-09-09): every skill prefixed `real-` (`/real-tdd`, `/real-feature-gate`); fixes a name clash with other skill sets and groups the set under one `/real-` prefix. Breaking: old names stop working.
 - **0.3.0** (2026-09-07): English throughout. Skills renamed (`start`, `feature-gate`, `module-audit`, `perf-audit`, `design-audit`, `design-rules`); folders `product/`, `design/`, `engineering/`. README in the shape of a skills page: install, get oriented, featured, the set.
 - **0.2.0** (2026-09-07): 13 skills from the upstream workflow under the engineering flow, each with an adaptation block; `start` replaces `start`; `setup` replaces `setup`; MIT.
 - **0.1.0** (2026-09-07): first set, 6 skills.
