@@ -7,7 +7,7 @@ description: "Review the changes since a fixed point (commit, branch, tag, or me
 > - Measure, don't guess: evidence from the repo and the running system; write "could not measure" when you couldn't.
 > - New features go through the `/real-feature-gate` five-heading gate before any code; this skill does not replace that gate.
 > - Issue tracker and labels are read from `docs/agents/` (`/real-setup`).
-> - `/real-start` is the map of the whole flow; `/real-start` and `/ask-matt` no longer exist.
+> - `/real-start` is the map of the whole flow; upstream's `/ask-matt` and `/setup-matt-pocock-skills` no longer exist.
 
 Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
