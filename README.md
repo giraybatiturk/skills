@@ -21,31 +21,42 @@ Codex and other agents, or an editable copy you own:
 npx skills@latest add giraybatiturk/skills
 ```
 
-Then, once per repo, run `/setup`: it picks the issue tracker, triage labels and the domain-doc layout the flow reads from.
+## First run
+
+Two commands, in this order:
+
+```
+/real-start      the map: what each skill does and which one fits your situation
+/real-setup      once per repo: issue tracker, triage labels, domain-doc layout
+```
+
+`/real-start` also takes the task directly, e.g. `/real-start audit the messaging module`, and picks the right skill for you.
+
+Every skill in this set is prefixed `real-`, so typing `/real-` lists them all.
 
 ## Get oriented
 
-Don't know where to begin? `/start` is the map. The main route most work travels:
+Don't know where to begin? `/real-start` is the map. The main route most work travels:
 
 ```
-idea       /grill-with-docs      sharpen the idea by interview; leaves CONTEXT.md + ADRs
-gate       /feature-gate         five headings, eight scenario classes, approval; no code yet
-plan       /to-spec → /to-tickets   for multi-session work; single-session goes straight to /implement
-build      /implement            drives /tdd and /code-review
-audit      /module-audit → /design-audit → /perf-audit
+idea       /real-grill-with-docs      sharpen the idea by interview; leaves CONTEXT.md + ADRs
+gate       /real-feature-gate         five headings, eight scenario classes, approval; no code yet
+plan       /real-to-spec → /real-to-tickets   for multi-session work; single-session goes straight to /real-implement
+build      /real-implement            drives /real-tdd and /real-code-review
+audit      /real-module-audit → /real-design-audit → /real-perf-audit
 ```
 
-Idea, gate and plan stay in one context window; no compact or clear until `/to-tickets` is done. Each `/implement` starts fresh from its ticket.
+Idea, gate and plan stay in one context window; no compact or clear until `/real-to-tickets` is done. Each `/real-implement` starts fresh from its ticket.
 
-On-ramps: a pile of incoming issues → `/triage`; something broken → `/diagnosing-bugs`, then `/module-audit` to find its siblings; a question that needs running code → `/prototype`.
+On-ramps: a pile of incoming issues → `/real-triage`; something broken → `/real-diagnosing-bugs`, then `/real-module-audit` to find its siblings; a question that needs running code → `/real-prototype`.
 
 ## Featured
 
-- **`/feature-gate`**: before writing code. Intent, measurement, eight scenario classes (permissions, state transitions, error paths, empty states, multi-user, third parties, contract consistency, deployment), five scope headings, approval gate.
-- **`/module-audit`**: the missing-scenario hunt in a module that already exists. Inventories endpoints, permissions and error codes from the code; outputs a permission matrix and a release order.
-- **`/design-audit`**: one screen against the project's DESIGN.md, from a screenshot plus the code, scored across nine dimensions.
-- **`/grill-with-docs`**: the relentless interview that sharpens an idea and leaves a domain model behind.
-- **`/tdd`**: red-green-refactor, one vertical slice at a time.
+- **`/real-feature-gate`**: before writing code. Intent, measurement, eight scenario classes (permissions, state transitions, error paths, empty states, multi-user, third parties, contract consistency, deployment), five scope headings, approval gate.
+- **`/real-module-audit`**: the missing-scenario hunt in a module that already exists. Inventories endpoints, permissions and error codes from the code; outputs a permission matrix and a release order.
+- **`/real-design-audit`**: one screen against the project's DESIGN.md, from a screenshot plus the code, scored across nine dimensions.
+- **`/real-grill-with-docs`**: the relentless interview that sharpens an idea and leaves a domain model behind.
+- **`/real-tdd`**: red-green-refactor, one vertical slice at a time.
 
 ## The skill set
 
@@ -87,10 +98,11 @@ On-ramps: a pile of incoming issues → `/triage`; something broken → `/diagno
 
 ## Project dependencies
 
-The audits treat the project's `DESIGN.md` and `AGENTS.md`/`CLAUDE.md` as the source of rules; without a `DESIGN.md`, `design-rules` is the baseline. The engineering skills read `docs/agents/`, which `/setup` writes.
+The audits treat the project's `DESIGN.md` and `AGENTS.md`/`CLAUDE.md` as the source of rules; without a `DESIGN.md`, `design-rules` is the baseline. The engineering skills read `docs/agents/`, which `/real-setup` writes.
 
 ## Changelog
 
+- **0.4.0** (2026-09-09): every skill prefixed `real-` (`/real-tdd`, `/real-feature-gate`); fixes a name clash with other skill sets and groups the set under one `/real-` prefix. Breaking: old names stop working.
 - **0.3.0** (2026-09-07): English throughout. Skills renamed (`start`, `feature-gate`, `module-audit`, `perf-audit`, `design-audit`, `design-rules`); folders `product/`, `design/`, `engineering/`. README in the shape of a skills page: install, get oriented, featured, the set.
 - **0.2.0** (2026-09-07): 13 skills from mattpocock/skills under the engineering flow, each with an adaptation block; `start` replaces `ask-matt`; `setup` replaces `setup-matt-pocock-skills`; MIT.
 - **0.1.0** (2026-09-07): first set, 6 skills.
