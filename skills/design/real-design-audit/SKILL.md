@@ -90,8 +90,8 @@ Binding: the verifier is never cheaper than the producers; a weak verifier is a 
 
 | Skill | When |
 |---|---|
+| `/real-grill` | Sharpen the idea before the gate |
 | `/real-feature-gate` | Before writing code |
 | `/real-module-audit` | Missing scenarios in a built module |
 | `/real-design-audit` | Screen is done (this skill) |
 | `/real-perf-audit` | Dependency added, before release |
-| `/real-start` | When you don't know which one |

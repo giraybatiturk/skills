@@ -1,7 +1,7 @@
 {
   "name": "giraybatiturk-skills",
-  "version": "0.4.0",
-  "description": "Skills for real AI product leads: a feature gate before code, module/design/performance audits, baseline design rules, plus the grilling, spec/ticket, TDD, code review and triage flow adapted from mattpocock/skills.",
+  "version": "0.5.0",
+  "description": "Seven skills for real AI product leads: grill the idea, gate it before code, then audit the module, the screen and the bundle. Measurement over guesswork.",
   "author": {
     "name": "Giray Batıtürk",
     "url": "https://giraybatiturk.com"
@@ -11,31 +11,17 @@
     "product",
     "design",
     "audit",
-    "engineering",
-    "tdd",
-    "code-review",
+    "feature-gate",
     "grilling",
-    "feature-gate"
+    "research"
   ],
   "skills": [
-    "./skills/product/real-start",
+    "./skills/engineering/real-grill",
     "./skills/product/real-feature-gate",
     "./skills/product/real-module-audit",
-    "./skills/product/real-perf-audit",
     "./skills/design/real-design-audit",
     "./skills/design/real-design-rules",
-    "./skills/engineering/real-setup",
-    "./skills/engineering/real-grilling",
-    "./skills/engineering/real-grill-me",
-    "./skills/engineering/real-grill-with-docs",
-    "./skills/engineering/real-to-spec",
-    "./skills/engineering/real-to-tickets",
-    "./skills/engineering/real-implement",
-    "./skills/engineering/real-tdd",
-    "./skills/engineering/real-code-review",
-    "./skills/engineering/real-diagnosing-bugs",
-    "./skills/engineering/real-triage",
-    "./skills/engineering/real-prototype",
+    "./skills/product/real-perf-audit",
     "./skills/engineering/real-research"
   ],
   "license": "MIT"
