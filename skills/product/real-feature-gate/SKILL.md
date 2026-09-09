@@ -95,8 +95,8 @@ End with three separate lists:
 
 | Skill | When |
 |---|---|
+| `/real-grill` | Sharpen the idea before the gate |
 | `/real-feature-gate` | Before writing code (this skill) |
 | `/real-module-audit` | Missing scenarios in a built module |
 | `/real-design-audit` | Screen is done; visual + DESIGN.md check |
 | `/real-perf-audit` | Dependency added, before release |
-| `/real-start` | When you don't know which one |
