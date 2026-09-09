@@ -129,8 +129,8 @@ Measurement is on `dist`, so **write the build date**; measuring a stale `dist` 
 
 | Skill | When |
 |---|---|
+| `/real-grill` | Sharpen the idea before the gate |
 | `/real-feature-gate` | Before writing code |
 | `/real-module-audit` | Missing scenarios in a built module |
 | `/real-design-audit` | Screen is done; visual + DESIGN.md check |
 | `/real-perf-audit` | Dependency added, before release (this skill) |
-| `/real-start` | When you don't know which one |
