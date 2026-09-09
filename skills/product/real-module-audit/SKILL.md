@@ -154,8 +154,8 @@ If the report is long, publish it as a shareable document (an Artifact); the iss
 
 | Skill | When |
 |---|---|
+| `/real-grill` | Sharpen the idea before the gate |
 | `/real-feature-gate` | Before writing code |
 | `/real-module-audit` | Missing scenarios in a built module (this skill) |
 | `/real-design-audit` | Screen is done; visual + DESIGN.md check |
 | `/real-perf-audit` | Dependency added, before release |
-| `/real-start` | When you don't know which one |
