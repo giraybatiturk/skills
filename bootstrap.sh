@@ -10,7 +10,10 @@
 # Yeniden çalıştırılabilir: her adım önce "zaten var mı" diye bakar, varsa atlar.
 # Hiçbir adım sessizce başarısız olmaz; sonda bir özet tablosu basar.
 
-set -uo pipefail
+# set -u YOK, bilerek: macOS'un bash'i 3.2 ve orada `set -u` ile boş bir
+# dizinin "${A[@]}" açılımı "unbound variable" verip betiği öldürüyor.
+# Ölçüldü: /bin/bash -c 'set -u; A=(); printf "%s" "${A[@]}"' patlıyor.
+set -o pipefail
 
 DEV="$HOME/Developer"
 DOTFILES="$DEV/dotfiles"
@@ -22,30 +25,29 @@ atla()  { printf "   \033[90m·\033[0m %s\n" "$1"; SONUC+=("· $1"); }
 uyar()  { printf "   \033[33m!\033[0m %s\n" "$1"; SONUC+=("! $1"); }
 hata()  { printf "   \033[31m✗\033[0m %s\n" "$1"; SONUC+=("✗ $1"); }
 
-# ── 1. Xcode komut satırı araçları ──────────────────────
-# git buna bağlı, ilk sırada olmalı.
-adim "Xcode komut satırı araçları"
-if xcode-select -p >/dev/null 2>&1; then
-  atla "zaten kurulu"
-else
-  xcode-select --install 2>/dev/null || true
-  echo "   Açılan pencerede kurulumu tamamla, bitince Enter'a bas."
-  read -r
-  xcode-select -p >/dev/null 2>&1 && tamam "kuruldu" || hata "kurulamadı, elle: xcode-select --install"
-fi
+# Apple Silicon /opt/homebrew, Intel /usr/local. İkisini de dene.
+brew_yolu() {
+  for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [[ -x "$b" ]] && eval "$("$b" shellenv)" && return 0
+  done
+  return 1
+}
 
-# ── 2. Homebrew ─────────────────────────────────────────
-adim "Homebrew"
+# ── 1. Homebrew ─────────────────────────────────────────
+# Xcode komut satırı araçları ayrı bir adım değil: Homebrew'un kurulum betiği
+# eksikse onları da kuruyor, üstelik softwareupdate ile, GUI penceresi
+# açmadan. Ayrı bir `xcode-select --install` iki fazladan adım demekti.
+adim "Homebrew (Xcode araçları dahil)"
 if command -v brew >/dev/null 2>&1; then
   atla "zaten kurulu"
 else
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
+  brew_yolu
   command -v brew >/dev/null 2>&1 && tamam "kuruldu" || { hata "Homebrew kurulamadı, durduruldu"; exit 1; }
 fi
-eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
+brew_yolu
 
-# ── 3. GitHub girişi ────────────────────────────────────
+# ── 2. GitHub girişi ────────────────────────────────────
 # dotfiles deposu private, bu adım olmadan klonlanamaz.
 adim "GitHub girişi"
 command -v gh >/dev/null 2>&1 || brew install gh
@@ -58,20 +60,20 @@ else
 fi
 gh auth setup-git 2>/dev/null && tamam "git kimlik yardımcısı ayarlandı"
 
-# ── 4. Depolar ──────────────────────────────────────────
+# ── 3. Depolar ──────────────────────────────────────────
 adim "Depolar"
 mkdir -p "$DEV"
 klonla() {
   local ad="$1" hedef="$DEV/$1"
   if [[ -d "$hedef/.git" ]]; then atla "$ad zaten var"
-  elif gh repo clone "giraybatiturk/$ad" "$hedef" -- --quiet 2>/dev/null; then tamam "$ad klonlandı"
+  elif gh repo clone "giraybatiturk/$ad" "$hedef" -- --quiet; then tamam "$ad klonlandı"
   else hata "$ad klonlanamadı"; fi
 }
 klonla dotfiles
 klonla skills
 klonla brain
 
-# ── 5. Paketler ─────────────────────────────────────────
+# ── 4. Paketler ─────────────────────────────────────────
 adim "Homebrew paketleri"
 if [[ -f "$DOTFILES/Brewfile" ]]; then
   brew bundle --file="$DOTFILES/Brewfile" --no-lock 2>&1 | tail -3
@@ -80,7 +82,7 @@ else
   hata "Brewfile bulunamadı"
 fi
 
-# ── 6. Node ─────────────────────────────────────────────
+# ── 5. Node ─────────────────────────────────────────────
 adim "Node"
 if command -v fnm >/dev/null 2>&1; then
   eval "$(fnm env)" 2>/dev/null || true
@@ -90,7 +92,7 @@ else
   uyar "fnm yok, Node kurulmadı"
 fi
 
-# ── 7. Claude Code ──────────────────────────────────────
+# ── 6. Claude Code ──────────────────────────────────────
 adim "Claude Code"
 if command -v claude >/dev/null 2>&1; then
   atla "zaten kurulu"
@@ -98,7 +100,7 @@ else
   curl -fsSL https://claude.ai/install.sh | bash && tamam "kuruldu" || uyar "kurulamadı, elle: claude.ai/install.sh"
 fi
 
-# ── 8. Yapılandırma ─────────────────────────────────────
+# ── 7. Yapılandırma ─────────────────────────────────────
 # restore.sh symlink'leri, hafızayı, görevleri, launchd'yi kurar ve
 # real-* skill'lerini ~/Developer/skills klonundan linkler.
 adim "Yapılandırma (restore.sh)"
@@ -108,7 +110,7 @@ else
   hata "restore.sh bulunamadı"
 fi
 
-# ── 9. Doğrulama ────────────────────────────────────────
+# ── 8. Doğrulama ────────────────────────────────────────
 adim "Doğrulama"
 n=$(ls -d "$HOME"/.claude/skills/real-* 2>/dev/null | wc -l | tr -d ' ')
 [[ "$n" == "8" ]] && tamam "8 real-* skill kurulu" || uyar "$n real-* skill bulundu, 8 bekleniyordu"
@@ -117,7 +119,7 @@ n=$(ls -d "$HOME"/.claude/skills/real-* 2>/dev/null | wc -l | tr -d ' ')
 
 # ── Özet ────────────────────────────────────────────────
 printf "\n\033[1m════ Özet ════\033[0m\n"
-printf "%s\n" "${SONUC[@]}" | sed 's/^/  /'
+[[ ${#SONUC[@]} -gt 0 ]] && printf "%s\n" "${SONUC[@]}" | sed 's/^/  /'
 
 cat <<'SON'
 
