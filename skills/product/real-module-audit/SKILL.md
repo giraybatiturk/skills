@@ -15,10 +15,7 @@ Argument: module or feature name (e.g. `messaging`, `appointments`, `payments`).
 - **Before going live**: the module works in test, hasn't reached a customer yet
 - Coming back to a module nobody touched for a while
 
-Two modes:
-
-- **Up front** (new feature, before code): produces the `/real-feature-gate` five headings for approval.
-- **After the fact** (built, running module): inventories scenarios from the code and marks the gaps.
+This skill runs **after the fact**: it inventories scenarios from code that already exists and marks the gaps. For a feature not yet written, `/real-feature-gate` is the one that produces the five headings.
 
 ## Why
 
