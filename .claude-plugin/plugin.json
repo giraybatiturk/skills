@@ -1,7 +1,7 @@
 {
   "name": "giraybatiturk-skills",
-  "version": "0.5.0",
-  "description": "Seven skills for real AI product leads: grill the idea, gate it before code, then audit the module, the screen and the bundle. Measurement over guesswork.",
+  "version": "0.6.0",
+  "description": "Eight skills for real AI product leads: an entry point that routes you, grill the idea, gate it before code, then audit the module, the screen and the bundle. Measurement over guesswork.",
   "author": {
     "name": "Giray Batıtürk",
     "url": "https://giraybatiturk.com"
@@ -16,6 +16,7 @@
     "research"
   ],
   "skills": [
+    "./skills/product/real-start",
     "./skills/engineering/real-grill",
     "./skills/product/real-feature-gate",
     "./skills/product/real-module-audit",
