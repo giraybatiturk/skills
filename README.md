@@ -1,6 +1,6 @@
 # Skills for Real AI Product Leads
 
-Seven skills I run every day as an AI product lead who also ships: sharpen the idea, gate it before any code, then audit the module, the screen and the bundle. Small, composable, built on measurement rather than guesswork.
+Eight skills I run every day as an AI product lead who also ships: sharpen the idea, gate it before any code, then audit the module, the screen and the bundle. Small, composable, built on measurement rather than guesswork.
 
 `/real-grill` and `/real-research` are adapted from the upstream workflow (MIT). The gate and the audits are what I added on top: the parts an engineering-only flow leaves to production to discover.
 
@@ -30,6 +30,8 @@ npx skills@latest add giraybatiturk/skills
 
 ## The route
 
+Don't know where to start? `/real-start` asks one question and names the command to run.
+
 ```
 idea    /real-grill            interview until nothing is silently assumed; --docs leaves ADRs + glossary
 gate    /real-feature-gate     five headings, eight scenario classes, approval; no code yet
@@ -43,6 +45,7 @@ Idea and gate stay in one context window. A fact you need on the way → `/real-
 
 | Skill | When | Invoked by |
 |---|---|---|
+| [real-start](./skills/product/real-start/SKILL.md) | You don't know which one | you |
 | [real-grill](./skills/engineering/real-grill/SKILL.md) | Sharpen a plan or decision by relentless interview | model |
 | [real-feature-gate](./skills/product/real-feature-gate/SKILL.md) | Before writing code | you |
 | [real-module-audit](./skills/product/real-module-audit/SKILL.md) | Missing scenarios in a built module | you |
@@ -59,6 +62,7 @@ The audits treat the project's `DESIGN.md` and `AGENTS.md`/`CLAUDE.md` as the so
 
 ## Changelog
 
+- **0.6.0** (2026-09-10): `/real-start` back as an interactive entry point. Asks one question (a second only in the audit branch) and names the command to run. It prints commands rather than launching them: four of the routed skills carry `disable-model-invocation`, so the model cannot launch them, and a router that pretends otherwise silently replicates their workflow instead.
 - **0.5.0** (2026-09-09): 19 → 7. Dropped what Claude Code or the superpowers set already provides (`tdd`, `code-review`, `diagnosing-bugs`) and the issue-tracker pipeline nobody ran solo (`setup`, `to-spec`, `to-tickets`, `implement`, `triage`), plus `start` (no map needed for seven) and `prototype`. `grilling` + `grill-me` + `grill-with-docs` merged into `real-grill` with a `--docs` mode. Breaking: the removed names stop working.
 - **0.4.0** (2026-09-09): every skill prefixed `real-`; fixes a name clash with other skill sets. Breaking: old names stop working.
 - **0.3.0** (2026-09-07): English throughout; folders `product/`, `design/`, `engineering/`.
