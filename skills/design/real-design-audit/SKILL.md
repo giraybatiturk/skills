@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Argument: a screen or file path or name (e.g. `VoucherEntryScreen`). **If missing, audit the screen open in the preview**: resolve the route from the screenshot or URL the user shared and proceed without asking. If neither exists, ask which screen.
 
-Source of rules: the project's `DESIGN.md`. If there is none, the `design-rules` skill is the baseline. **Never invent a rule.**
+Source of rules: the project's `DESIGN.md`. If there is none, the `real-design-rules` skill is the baseline. **Never invent a rule.**
 
 ## Flow
 
@@ -16,7 +16,7 @@ Source of rules: the project's `DESIGN.md`. If there is none, the `design-rules`
 1. Read the screenshot + the target screen (component + its style file) + `DESIGN.md`. **For consistency**, scan 1-2 sibling screens too (same module, or same kind: list / detail / form).
 1b. **Branch coverage: enumerate every branch and every collapsed, hidden or nested container.** Tabs, segment modes, conditional renders, **and containers hidden on open**: accordion panels, collapsibles, popover/dropdown/menu contents, modals/drawers, expandable rows, sub-sections. **Open each one and look inside**; audit separately. Each hidden container gets its own finding; ask for a screenshot of each where possible.
 2. Audit **big picture → detail** (block frames before pixels):
-   1) Purpose + IA / content order and priority → 2) Layout, hierarchy, action priority → 3) Component/cascade → 4) Token/colour/radius → 5) Typography/language → 6) State matrix + branch coverage → 7) A11y → 8) Interaction → 9) Consistency (internal + external).
+   Order of attack: purpose and IA first, then layout and action priority, then the component cascade, then tokens, then the nine dimensions below one by one. Structure before pixels.
    If there's a structural problem higher up, **flag it first** instead of drowning in pixel/token detail. Every finding: `file:line`, dimension, severity (P0/P1/P2/P3), the DESIGN.md section violated, one-sentence problem, concrete fix.
 3. **Adversarially verify** every finding you're not sure of: actually read the line; kill false positives (is the hex in a comment, is it a `var(--*)`, is the translate an active state or a hover, is the native element a slot or a real control).
 4. Score and report.
