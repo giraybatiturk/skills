@@ -74,13 +74,36 @@ klonla skills
 klonla brain
 
 # ── 4. Paketler ─────────────────────────────────────────
+# Tek satır, Brewfile yok. Ölçüm: 10 Eylül 2026, çalışan makinede `brew list`.
+# 119 formülün 90'ı bağımlılık olarak geliyor (cairo, harfbuzz, libpng...),
+# onlar yazılmadı; brew aşağıdakilerle birlikte kendisi kuruyor.
 adim "Homebrew paketleri"
-if [[ -f "$DOTFILES/Brewfile" ]]; then
-  brew bundle --file="$DOTFILES/Brewfile" --no-lock 2>&1 | tail -3
-  tamam "Brewfile kuruldu ($(grep -c '^brew\|^cask' "$DOTFILES/Brewfile") paket)"
-else
-  hata "Brewfile bulunamadı"
-fi
+brew install \
+  starship zsh-autosuggestions zsh-syntax-highlighting atuin zoxide fzf \
+  eza bat fd ripgrep tmux jq \
+  gh glab git-delta git-filter-repo \
+  fnm python@3.14 pipx uv go deno \
+  xcodegen asc idb-companion sentry-cli \
+  poppler qpdf weasyprint tectonic ffmpeg yt-dlp unar \
+  gnupg cliclick macmon 2>&1 | tail -2
+tamam "34 formül"
+
+brew install --cask \
+  ghostty font-jetbrains-mono font-jetbrains-mono-nerd-font \
+  1password-cli gcloud-cli logi-options+ 2>&1 | tail -2
+tamam "6 uygulama"
+
+# Ne neye yarıyor, silmeden önce bak:
+#   poppler        pdftotext, brain/.claude/scripts/ekstre.py buna bağlı
+#   glab           GitLab CLI, bibulut-web ve bilandings
+#   xcodegen       project.yml -> xcodeproj, beebo/dosehue/vera
+#   asc            App Store Connect CLI, yayın hattı
+#   idb-companion  simülatör otomasyonu
+#   sentry-cli     dSYM yükleme
+#   ripgrep        Claude Code da kullanıyor
+#   weasyprint     HTML -> PDF
+#   tectonic       LaTeX
+#   cliclick       ekran otomasyonu
 
 # ── 5. Node ─────────────────────────────────────────────
 adim "Node"
