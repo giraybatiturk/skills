@@ -1,0 +1,6 @@
+interface:
+  display_name: "Audit"
+  short_description: "Find the highest-value gaps in a shipped product"
+  default_prompt: "Use $real-audit to measure this product and identify the next improvement."
+policy:
+  allow_implicit_invocation: true

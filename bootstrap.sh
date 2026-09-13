@@ -85,12 +85,12 @@ brew install \
   fnm python@3.14 pipx uv go deno \
   xcodegen asc idb-companion sentry-cli \
   poppler qpdf weasyprint tectonic ffmpeg yt-dlp unar \
-  gnupg cliclick macmon 2>&1 | tail -2
+  gnupg cliclick macmon 2>&1 | tail -2 || { hata "Homebrew formülleri kurulamadı, durduruldu"; exit 1; }
 tamam "34 formül"
 
 brew install --cask \
   ghostty font-jetbrains-mono font-jetbrains-mono-nerd-font \
-  1password-cli gcloud-cli logi-options+ 2>&1 | tail -2
+  1password-cli gcloud-cli logi-options+ 2>&1 | tail -2 || { hata "Homebrew uygulamaları kurulamadı, durduruldu"; exit 1; }
 tamam "6 uygulama"
 
 # Ne neye yarıyor, silmeden önce bak:
@@ -128,15 +128,29 @@ fi
 # real-* skill'lerini ~/Developer/skills klonundan linkler.
 adim "Yapılandırma (restore.sh)"
 if [[ -f "$DOTFILES/claude/restore.sh" ]]; then
-  bash "$DOTFILES/claude/restore.sh" && tamam "symlink, hafıza, görevler, skill'ler kuruldu"
+  bash "$DOTFILES/claude/restore.sh" && tamam "symlink, hafıza, görevler, skill'ler kuruldu" || exit 1
 else
   hata "restore.sh bulunamadı"
+  exit 1
 fi
 
 # ── 8. Doğrulama ────────────────────────────────────────
 adim "Doğrulama"
-n=$(ls -d "$HOME"/.claude/skills/real-* 2>/dev/null | wc -l | tr -d ' ')
-[[ "$n" == "8" ]] && tamam "8 real-* skill kurulu" || uyar "$n real-* skill bulundu, 8 bekleniyordu"
+for kok in "$HOME/.claude/skills" "$HOME/.agents/skills"; do
+  eksik=""
+  for ad in real-start real-plan real-audit real-research; do
+    hedef="$kok/$ad"
+    [[ -L "$hedef" && -f "$hedef/SKILL.md" ]] || eksik="$eksik $ad"
+  done
+  for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context; do
+    [[ -f "$kok/real-audit/references/$ref.md" ]] || eksik="$eksik audit/$ref"
+  done
+  for ref in discovery feature-gate; do
+    [[ -f "$kok/real-plan/references/$ref.md" ]] || eksik="$eksik plan/$ref"
+  done
+  if [[ -n "$eksik" ]]; then hata "$kok eksik veya bozuk:$eksik"; exit 1; fi
+  tamam "$kok: dört workflow ve referansları doğrulandı"
+done
 [[ -L "$HOME/.claude/CLAUDE.md" ]] && tamam "CLAUDE.md bağlı" || uyar "CLAUDE.md symlink'i yok"
 [[ -f "$HOME/Library/LaunchAgents/com.giray.beyin-derleyici.plist" ]] && tamam "gece derleyici yüklü" || uyar "launchd görevi yok"
 
@@ -162,5 +176,5 @@ Bu betiğin yapamayacağı üç şey var:
      claude  ile başlat, hesabınla giriş yap
      /mcp    ile bağlayıcıları yeniden yetkilendir
 
-Sonra yeni bir oturumda /real- yaz. Sekiz skill çıkmalı.
+Sonra yeni bir oturumda /real- yaz. Dört public skill çıkmalı: start, plan, audit, research.
 SON

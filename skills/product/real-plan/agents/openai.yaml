@@ -1,0 +1,6 @@
+interface:
+  display_name: "Plan"
+  short_description: "Scope and approve product changes before code"
+  default_prompt: "Use $real-plan to turn this change into an evidence-backed approved scope."
+policy:
+  allow_implicit_invocation: true
