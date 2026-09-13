@@ -9,13 +9,14 @@
     {
       "name": "giraybatiturk-skills",
       "source": "./",
-      "description": "Entry point, grill, feature gate, module/design/perf audits, design rules, research. Eight skills, all prefixed /real-.",
+      "description": "Four connected product workflows: start, plan, audit and research. Detailed modes and design rules load only when needed.",
       "category": "engineering",
       "keywords": [
         "product",
         "design",
         "audit",
-        "engineering"
+        "engineering",
+        "research"
       ]
     }
   ]

@@ -1,7 +1,7 @@
 {
   "name": "giraybatiturk-skills",
-  "version": "0.6.0",
-  "description": "Eight skills for real AI product leads: an entry point that routes you, grill the idea, gate it before code, then audit the module, the screen and the bundle. Measurement over guesswork.",
+  "version": "0.8.0",
+  "description": "Four connected workflows for product planning, auditing and research. Supports natural-language selection with progressively loaded modes.",
   "author": {
     "name": "Giray Batıtürk",
     "url": "https://giraybatiturk.com"
@@ -11,18 +11,13 @@
     "product",
     "design",
     "audit",
-    "feature-gate",
-    "grilling",
+    "planning",
     "research"
   ],
   "skills": [
     "./skills/product/real-start",
-    "./skills/engineering/real-grill",
-    "./skills/product/real-feature-gate",
-    "./skills/product/real-module-audit",
-    "./skills/design/real-design-audit",
-    "./skills/design/real-design-rules",
-    "./skills/product/real-perf-audit",
+    "./skills/product/real-plan",
+    "./skills/product/real-audit",
     "./skills/engineering/real-research"
   ],
   "license": "MIT"

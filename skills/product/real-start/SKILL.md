@@ -1,82 +1,38 @@
 ---
 name: real-start
-description: Entry point for this skill set. Asks where you are in the work, then names the exact command to run. Give it the task directly and it answers without asking.
-disable-model-invocation: true
+description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit and research requests. Select the smallest Real workflow; skip routing for simple edits or already-approved implementation."
 ---
 
-# /real-start
+# Real start
 
-This file routes; it never does the work itself.
+Choose and invoke the smallest workflow that can finish the request. Do not make the user type another command.
 
-**Four of the skills this file routes to carry `disable-model-invocation: true`** - the model cannot launch them, only you can. So the output is always **the command for you to type**, on its own line, ready to copy. Never replicate a target skill's workflow inline; that is the failure this file exists to prevent.
+Carry evidence limits through the recommendation as well as the findings. If analytics or feedback are not supplied, first locate or request existing evidence; do not assume they need to be created from scratch. Proposed next checks are not proven defects or mandatory new features.
 
-The two routed skills without the flag (`real-grill`, `real-research`) may be loaded directly with the `Skill` tool instead of printed. (`real-design-rules` has no flag either, but this file never routes to it.)
+Keep the router's handoff short. Ask at most 1–3 independent questions that change the next step; defer dependent choices. Lead with the selected route and end with one next action if needed. Reuse a sufficient existing solution and skip speculative stages. If the selected workflow cannot proceed because the product evidence is unavailable, report the selected route, the exact missing evidence and the next useful read-only step. Do not simulate a full downstream audit with speculative features, risk rankings or repeated summaries of missing evidence.
 
-**Print the form that matches the install.** Symlinked into `~/.claude/skills/`, the bare `/real-module-audit` works. Installed as a plugin, Claude Code namespaces every skill and only `/giraybatiturk-skills:real-module-audit` works. Check which one this session has and print that form.
+Use the client's skill invocation tool or read the selected skill at its catalog-provided path. Do not claim it ran before its instructions load. If unavailable, state the missing capability; do not guess paths. An already-approved implementation goes directly to execution and appropriate verification, without restarting planning.
 
-## With an argument: answer, don't ask
+## Shared project context
 
-`/real-start audit the messaging module` → name the skill, one line of reasoning, then the command:
+Read the project's existing `PRODUCT.md` before routing and carry its resolved path plus known answers forward. Use the catalog-resolved Real Audit `references/product-context.md` (or verified adjacent `../real-audit/references/product-context.md`) as the shared persistence contract. Let the selected Plan/Audit workflow fill and save confirmed missing facts; the router must not create a second record or interview. Preserve DESIGN.md as read-only unless design-policy work was explicitly requested. Missing PRODUCT.md alone does not block a focused task or already-approved implementation.
 
-```
-/real-module-audit messaging
-```
+## Product maturity before routing
 
-If the argument clearly lands in the audit branch but doesn't say **which** audit (module, screen or speed), ask only the second question below. Don't re-ask the first.
+When receiving an audit request or handoff, carry forward any established product context and scope. Distinguish three cases:
 
-If the argument matches nothing in this set, say so and carry on normally - don't force it onto the map and don't fall back to the question.
+- **Confirmed idea only / product not formed:** route to `real-plan` discovery to clarify purpose, users/buyers, intended outcome, candidate user stories and the smallest testable slice. Do not invoke audit merely because the original request used the word audit.
+- **Design or prototype:** if the user wants review of that artifact, route to a bounded `real-audit` Design/Module review of demonstrable behavior. Do not claim live-product, billing or release verification. If the request is instead to define/build the product, use Plan.
+- **Existing product:** route to the selected audit scope and modes. Missing access, documents or screenshots does not prove the product does not exist; request the exact missing evidence or continue independent checks.
 
-## With no argument: ask once
+Do not loop between Start and Audit. An Audit handoff that confirms idea-only goes to Plan, not back to Audit. Load the destination instructions and continue without requiring the user to type another command. If the user explicitly requests critique of an idea only, honor that bounded request and label it conceptual rather than runtime audit.
 
-Use `AskUserQuestion`, one question, four options:
+## Routing
 
-| Option | Description shown | Answer |
-|---|---|---|
-| Building something new | No code yet. Intent, scenarios and scope come first. | `/real-feature-gate` |
-| Sharpening an idea | A decision or plan exists but hasn't settled. | load `real-grill` |
-| Done, let's audit | A working module, screen or release candidate. | second question below |
-| Need a fact | The basis for a decision isn't in the repo: docs, API, third party. | load `real-research` |
+- **Plan**: a new feature, change, decision, requirement, or idea that is not approved yet. Invoke `real-plan`.
+- **Audit**: improve an existing product, inspect what is missing, review a built module or screen, measure performance, or decide the next release. Invoke `real-audit` with the appropriate mode.
+- **Research**: the decision depends on current external facts, official documentation, competitor behavior, pricing, policy, or provider limits. Invoke `real-research`.
 
-`AskUserQuestion` always adds an "Other" option. If the user writes something there, don't force it onto the map: say "this set has no match for that, carrying on normally" and continue as usual.
+If the request spans workflows, use this order: research unresolved external facts, plan the change, implement only after approval, then audit the result. Skip stages whose evidence is already settled.
 
-## Second question, audit branch only
-
-This is the only place a second question is allowed. Never a third.
-
-| Option | Description shown | Answer |
-|---|---|---|
-| Module | Missing-scenario hunt: permissions, error paths, empty states. | `/real-module-audit` |
-| Screen | One screen against DESIGN.md, scored across 9 dimensions. | `/real-design-audit` |
-| Speed | Bundle and load, measured against a budget. | `/real-perf-audit` |
-| All three | Full pre-release pass. | print all three, in order |
-
-For "all three", print the commands as a numbered list and say to run them one at a time, letting each finish before the next: they each need their own context, and a finding in the module audit can change what the screen audit should look at.
-
-## Arguments the target needs
-
-`real-feature-gate` wants the feature, `real-module-audit` a module name, `real-design-audit` a screen name, `real-perf-audit` a target. If the user hasn't said it, include a placeholder in the printed command (`/real-module-audit <module>`) and say what goes there. Don't ask for it as another question.
-
-## The flow
-
-```
-idea      real-grill              interview until nothing is silently assumed
-gate      /real-feature-gate      five headings, eight scenario classes, approval; no code yet
-build     your own flow           Claude Code's /code-review, TDD and debugging skills
-audit     /real-module-audit → /real-design-audit → /real-perf-audit
-```
-
-Idea and gate stay in one context window. A fact you need on the way: `real-research`. Any UI work picks up `real-design-rules` on its own; never route to it.
-
-## The set
-
-| Skill | When | Invoked by |
-|---|---|---|
-| [real-grill](../../engineering/real-grill/SKILL.md) | Sharpen a plan or decision | model |
-| [real-feature-gate](../real-feature-gate/SKILL.md) | Before writing code | you |
-| [real-module-audit](../real-module-audit/SKILL.md) | Missing scenarios in a built module | you |
-| [real-design-audit](../../design/real-design-audit/SKILL.md) | Screen is done | you |
-| [real-design-rules](../../design/real-design-rules/SKILL.md) | Any UI work | model |
-| [real-perf-audit](../real-perf-audit/SKILL.md) | Dependency added, before release | you |
-| [real-research](../../engineering/real-research/SKILL.md) | Primary-source research | model |
-
-"you" = `disable-model-invocation: true`; runs only when you type it. "model" = picked up when the topic matches.
+Legacy mapping: `real-grill` and `real-feature-gate` are now `real-plan`; `real-product-audit`, `real-module-audit`, `real-design-audit`, and `real-perf-audit` are modes of `real-audit`.

@@ -1,3 +1,6 @@
 interface:
   display_name: "Research"
-  short_description: "Research from high-trust sources"
+  short_description: "Research current facts from primary sources"
+  default_prompt: "Use $real-research to investigate this question from primary sources."
+policy:
+  allow_implicit_invocation: true
