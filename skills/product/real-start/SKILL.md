@@ -1,6 +1,11 @@
 ---
 name: real-start
-description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit and research requests. Select the smallest Real workflow; skip routing for simple edits or already-approved implementation."
+description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit and research requests. Select the smallest Real workflow; skip routing for simple edits or already-approved implementation. (v0.8.0)"
+license: MIT
+metadata:
+  author: Giray Batıtürk
+  version: 0.8.0
+  source: https://github.com/giraybatiturk/skills
 ---
 
 # Real start
