@@ -56,6 +56,18 @@ bash "$HOME/Developer/skills/scripts/install-local.sh" "$HOME/.claude/skills"
 
 If the checkout already exists, skip cloning. The installer validates the whole bundle before changing links, supports repeated runs, and stops on copied directories or foreign links. Move conflicts to a backup outside the skills directory and retry. For local Codex installation, run the same script with `"$HOME/.agents/skills"`.
 
+### Claude app (claude.ai and Claude desktop)
+
+Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the four zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all four; `real-plan` and `real-start` expect `real-audit` next to them.
+
+To build the zips from a checkout instead:
+
+```bash
+bash scripts/build-zips.sh
+```
+
+Each description ends with a version stamp such as `(v0.8.0)`, so the app's skill list shows which release is installed. On a new release, upload the new zip again; a skill with the same name is updated in place.
+
 ### Codex
 
 ```bash
