@@ -1,6 +1,11 @@
 ---
 name: real-plan
-description: "Plan new features and product changes before implementation: user stories, requirements, architecture and acceptance criteria. Use for planla or an unsettled idea; reuse existing approval and skip renewed planning for approved edits."
+description: "Plan new features and product changes before implementation: user stories, requirements, architecture and acceptance criteria. Use for planla or an unsettled idea; reuse existing approval and skip renewed planning for approved edits. (v0.8.0)"
+license: MIT
+metadata:
+  author: Giray Batıtürk
+  version: 0.8.0
+  source: https://github.com/giraybatiturk/skills
 ---
 
 # Real plan
