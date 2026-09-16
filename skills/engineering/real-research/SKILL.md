@@ -1,6 +1,11 @@
 ---
 name: real-research
-description: "Research questions using primary sources: araştır, official documentation, API behavior, competitors or provider limits. Separate verified facts from inference and record sources; do not implement the researched change."
+description: "Research questions using primary sources: araştır, official documentation, API behavior, competitors or provider limits. Separate verified facts from inference and record sources; do not implement the researched change. (v0.8.0)"
+license: MIT
+metadata:
+  author: Giray Batıtürk
+  version: 0.8.0
+  source: https://github.com/giraybatiturk/skills
 ---
 
 > **Local workflow rules:**

@@ -1,6 +1,11 @@
 ---
 name: real-audit
-description: Audit existing code, modules, screens or products. Use for review, denetle, audit, missing behavior, UX quality, readiness or performance checks. Produce evidence-backed findings; apply fixes only when authorized.
+description: Audit existing code, modules, screens or products. Use for review, denetle, audit, missing behavior, UX quality, readiness or performance checks. Produce evidence-backed findings; apply fixes only when authorized. (v0.8.0)
+license: MIT
+metadata:
+  author: Giray Batıtürk
+  version: 0.8.0
+  source: https://github.com/giraybatiturk/skills
 ---
 
 # Real audit
