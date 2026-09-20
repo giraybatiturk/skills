@@ -77,6 +77,8 @@ This skill reports defects; it does not design their remedy. Establish what is w
 
 For interface work, read `references/design-rules.md`. The project's own `DESIGN.md` takes precedence over that baseline. Render and measure mobile first, then desktop, then apply the rules.
 
+When the target is a running production system with real users and data, read `references/live-audit.md` before inspecting it. An audit observes; it must not alter state, spend the account's budget or leave residue, and its own traffic must not be reported as user behaviour.
+
 Keep a bounded audit single-agent. For critical, external, sensitive, cross-repository, or explicitly orchestrated work, read `references/orchestration.md`.
 
 ## Shared report format
