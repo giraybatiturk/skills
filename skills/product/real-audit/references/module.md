@@ -24,7 +24,7 @@ Measured case (a messaging module): 10 of 21 scenarios were missing, 5 were half
 2. Assess every checklist class for applicability; write scenarios for applicable classes and a short reason for each not-applicable class.
 3. Write each scenario as **role + action + acceptance criterion**, then **what happens today** and **owner** (frontend / backend / devops).
 4. Mark status: `working` (tried end to end) · `source-verified` (source establishes the narrow behavior, not runtime integration) · `half` (one side ready, the other missing) · `missing` (absence verified) · `unverified` (required evidence unavailable; name the missing evidence and verifier). Do not put source-only results in working totals.
-5. Report; propose an order (release gates on top).
+5. Report, release gates first. Order reflects measured impact; it is not a delivery plan.
    A release gate must follow an applicable product requirement. In a function-only audit, absent caller/server evidence is a scope limit, not a new requirement to build or release-block a server.
 6. With applicable implementation authorization, fix the frontend gaps. Include backend gaps as one list in the local report; sending them to an issue tracker requires explicit authorization for that external action.
 
@@ -37,7 +37,7 @@ Derive commands for the project yourself; record discovered paths in the audit r
 grep -rnoE "['\"](/?api/)?v[0-9]+/<module>[a-zA-Z/_-]*['\"]" <api-client-dir> | sort -u
 
 # 2. Permission actions: what the backend DEFINED
-# If absent from the contract, inspect the permission matrix read-only and propose a regression test in the report.
+# If absent from the contract, inspect the permission matrix read-only and record the untested permission path as a coverage gap.
 grep -rn "<MODULE>_\(MODULE\|ACTION\)\|can(['\"]<module>" <types-dir>
 
 # 3. Which actions the frontend ASKS for: the gap vs (2) is the most common miss

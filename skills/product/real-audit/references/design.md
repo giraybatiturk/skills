@@ -11,12 +11,16 @@ For animation, gesture, transition or feedback review, read `motion.md` in this 
 0. Read `reporting.md` and use its screenshot evidence and coverage contract. **Start visual.** Spacing (box-to-box gaps, button padding, edge proximity), alignment, rhythm, colour and radius, states and consistency only show in the render; static code misses them. The user shares a preview screenshot, or headless capture runs if installed; **the user's live browser is not automated unless explicitly allowed right then.**
 1. Read the screenshot + the target screen (component + its style file) + `DESIGN.md`. **For consistency**, scan 1-2 sibling screens too (same module, or same kind: list / detail / form).
 1b. **Branch coverage: enumerate every branch and every collapsed, hidden or nested container.** Tabs, segment modes, conditional renders, **and containers hidden on open**: accordion panels, collapsibles, popover/dropdown/menu contents, modals/drawers, expandable rows, sub-sections. **Open each one and look inside**; audit separately. Each container gets a coverage entry: verified, unverified, or not applicable with a reason. Create a finding only for a verified defect; record missing screenshots or access as unverified coverage.
+1c. **Measure the narrow viewport before judging it.** Render at a real phone width and take numbers, not impressions. Horizontal overflow is `document.documentElement.scrollWidth - window.innerWidth`; any value above zero means the page itself scrolls sideways. A table wider than the viewport is correct when its own container scrolls and the body does not. Check that every interactive element sits inside the viewport: an element whose `getBoundingClientRect().right` exceeds `window.innerWidth` is unreachable, which is a functional failure and not merely clipping. Measure hit areas against the platform's own guidance rather than a remembered threshold. Then repeat at desktop width.
+
+   Practical note: resizing a browser window does not always resize the page's viewport, particularly after the tab has been wide. Confirm the effective `window.innerWidth` before trusting any measurement taken after a resize.
+
 2. Audit **big picture → detail** (block frames before pixels):
    Order of attack: purpose and IA first, then layout and action priority, then the component cascade, then tokens, then the nine dimensions below one by one. Structure before pixels.
-   If there's a structural problem higher up, **flag it first** instead of drowning in pixel/token detail. Every finding: `file:line`, dimension, priority (High/Medium/Low), critical-blocker flag when applicable, the applicable DESIGN.md or baseline section violated, one-sentence problem, concrete fix.
+   If there's a structural problem higher up, **flag it first** instead of drowning in pixel/token detail. Every finding: `file:line`, dimension, priority (High/Medium/Low), critical-blocker flag when applicable, the applicable DESIGN.md or baseline section violated, one-sentence problem. Describe the defect and its mechanism; do not design the correction.
 3. **Adversarially verify** every finding you're not sure of: actually read the line; kill false positives (is the hex in a comment, is it a `var(--*)`, is the translate an active state or a hover, is the native element a slot or a real control).
 4. Report verified findings and coverage. Score only under the conditions below.
-5. **Improve the code only with applicable user authorization.** Severity does not authorize edits. Otherwise report proposed fixes. For authorized fixes, run the project's appropriate checks and compare measured coverage and screenshots before/after.
+5. **Report; do not design the correction.** Severity does not authorize edits, and an audit does not produce the replacement layout, component, token or colour choice. State what breaks, against which rule, and the observable outcome that would show it resolved. If the user separately authorizes fixes, do that work as a labelled task outside the findings and compare measured coverage and screenshots before/after.
 
 ## Dimensions
 
@@ -41,7 +45,7 @@ Use the project's DESIGN.md as the canonical rule source, or `design-rules.md` w
 
 ## Output format
 
-Use `reporting.md`: executive summary and priority counts, scope/environment and criteria, screen/state coverage linked to captures, numbered findings with screenshots and separate recommendations, then unverified checks and proposed next actions. Keep per-dimension verification statuses from Scoring above. Technical P0-P3 references may accompany the user-facing priorities using the shared mapping.
+Use `reporting.md`: executive summary and priority counts, scope/environment and criteria, screen/state coverage linked to captures, numbered findings with screenshots, then unverified checks and open items. Keep per-dimension verification statuses from Scoring above. Technical P0-P3 references may accompany the user-facing priorities using the shared mapping.
 
 No findings means clean only for a fully measured dimension. Mark unmeasured dimensions unverified; never infer a perfect or ship-ready result from missing evidence.
 

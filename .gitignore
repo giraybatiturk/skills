@@ -1,2 +1,5 @@
 .DS_Store
 dist/
+
+# Personal machine setup; belongs in a dotfiles repo, not distributed here
+bootstrap.sh
