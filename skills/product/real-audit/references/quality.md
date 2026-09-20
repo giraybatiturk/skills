@@ -56,8 +56,8 @@ Use a concise chat report or the project's existing local audit-documentation lo
 
 1. Target, expected behavior, audit scope, and evidence conditions.
 2. Criteria/scenarios mapped to evidence and one of the four statuses.
-3. Verified defects ranked by observed user impact, with source location, trigger, expected/actual result, and proposed fix.
-4. Test-quality gaps and proposed checks, separated from product defects.
+3. Verified defects ranked by observed user impact, with source location, trigger and expected/actual result. Report the defect, not its correction.
+4. Test-coverage gaps, separated from product defects: name the untested behavior and its risk, not the test to write.
 5. Remaining evidence or decisions needed, with verifier/owner and the next bounded check.
 
 Write only a local report unless a specific external publication or issue-tracker action is authorized. If the request requires deeper product direction, interface review, performance measurement, or new implementation scope, identify that boundary and use the relevant Real mode or planning workflow within the user's authorized scope.

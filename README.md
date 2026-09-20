@@ -83,7 +83,7 @@ The supported installation is the complete four-skill bundle. Plan depends on Au
 Intended routes below depend on client selection; use the explicit command when routing must be deterministic.
 
 - “Build medication reminders” → `real-plan`: User story, Analysis, Backend scope, Frontend scope, and Connection before code.
-- “What should Dosehue improve next?” → `real-audit` Product mode.
+- “What should we improve next in this product?” → `real-audit` Product mode.
 - “This screen feels crowded” → `real-audit` Design mode, project `DESIGN.md` before the baseline.
 - “Check the latest App Store rule” → `real-research`, primary sources.
 - “Is this animation smooth?” → `real-audit` Design with Motion, runtime evidence required.

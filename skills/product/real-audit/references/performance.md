@@ -13,7 +13,7 @@ Use the actual production build and browser evidence. Identify the build command
 
 ## Budget
 
-Check the project's `DESIGN.md` first; an existing budget applies. Otherwise use this baseline provisionally and propose a measured budget in the report. Do not modify DESIGN.md without applicable authorization:
+Check the project's `DESIGN.md` first; an existing budget applies. Otherwise use this baseline provisionally and record that no agreed budget exists, naming who must set one. Do not modify DESIGN.md without applicable authorization:
 
 | Measure | Baseline budget |
 |---|---|
@@ -77,7 +77,7 @@ Target latency/stability metric  ...          ...        ...      verified/unver
 Deferred chunks: <verified set, count, largest raw file bytes>
 Budget comparison: <pass/overrun/unverified, with matching scope and units>
 Limits: <missing evidence and verifier>
-On overrun: <resource or operation, measured impact, proposed next step>
+On overrun: <resource or operation, measured impact, decision owner>
 ```
 
 Use the actual project budget, or clearly label the provisional baseline. Omit inapplicable metrics with a reason; never substitute a partial measurement for the requested result.
