@@ -13,7 +13,7 @@ Audit the product that actually exists. Produce an evidence-backed product decis
 ## Evidence rules
 
 - Inspect the repository, running product, product documents, store material, analytics definitions, support evidence, and delivery configuration that are available.
-- Measure before recommending. Label statements as **Fact**, **Inference**, or **Decision** when the distinction matters.
+- Measure before concluding. Label statements as **Fact**, **Inference**, or **Decision** when the distinction matters.
 - Write **Could not measure** for unavailable analytics, user evidence, external systems, or live behavior. Name who or what can verify it.
 - Never invent baselines, targets, dates, owners, revenue, conversion, retention, or user demand.
 - Identify the canonical source for each product claim. Record contradictions instead of silently choosing one.
@@ -112,7 +112,7 @@ Use `reporting.md` as the shared presentation contract, retaining the additional
 Evidence: repository, runtime, data, or user evidence
 Impact: affected user outcome and scope
 Today: current observable behavior
-Recommend: concrete product decision or investigation
+Resolved when: observable outcome showing the finding no longer holds
 Owner: role or system responsible; "Unassigned" when unknown
 Decision: Now | Next | Later | Not doing | Needs evidence
 ```
@@ -131,10 +131,10 @@ The report must contain:
 6. Metric tree and instrumentation gaps
 7. Monetization findings
 8. Now / Next / Later / Not doing
-9. Proposed next release with acceptance criteria
-10. Open decisions and verification owners
+9. Open decisions, each with the owner who must make it
+10. Evidence that could not be gathered, with its verifier
 
-Return a concise summary in chat with the report link, top findings, proposed next release, and anything that could not be measured.
+Return a concise summary in chat with the report link, top findings, the open decisions and anything that could not be measured.
 
 ## Routing boundaries
 

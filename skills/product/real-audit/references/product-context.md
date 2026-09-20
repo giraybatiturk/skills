@@ -12,6 +12,7 @@ Establish these fields only to the depth needed for the selected scope:
 - **Users and buyers:** the primary user, usage context, problem/current alternative, and payer/decision-maker if different. Do not invent personas or demand.
 - **Success:** the user's valuable outcome and the product owner's current objective: revenue/profit, adoption/retention, internal efficiency, public benefit or another stated goal. Monetization is not every product's purpose.
 - **Journey:** the main job, entry point, value moment, completion/recovery and return trigger, with relevant roles and platforms.
+- **Artefact type:** what is actually being audited - web app or site, native mobile app, hybrid, desktop application, visual deliverable, or a service with no interface. This selects the applicable rule set and evidence standard; record it once and reuse it instead of re-asking each audit. A product may hold several types; name each one in scope.
 - **Constraints and evidence:** release/scope limits, supported markets/platforms, data access, current acceptance criteria and meaningful success evidence. Do not invent numerical targets.
 
 ## Ask only what changes the audit
