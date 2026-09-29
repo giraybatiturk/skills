@@ -34,10 +34,11 @@ Do not loop between Start and Audit. An Audit handoff that confirms idea-only go
 
 ## Routing
 
+- **Brainstorm**: no candidate exists yet and the user wants options, ideas, angles or names generated and narrowed. Invoke `real-brainstorm`.
 - **Plan**: a new feature, change, decision, requirement, or idea that is not approved yet. Invoke `real-plan`.
 - **Audit**: improve an existing product, inspect what is missing, review a built module or screen, measure performance, or decide the next release. Invoke `real-audit` with the appropriate mode.
 - **Research**: the decision depends on current external facts, official documentation, competitor behavior, pricing, policy, or provider limits. Invoke `real-research`.
 
-If the request spans workflows, use this order: research unresolved external facts, plan the change, implement only after approval, then audit the result. Skip stages whose evidence is already settled.
+If the request spans workflows, use this order: research unresolved external facts, brainstorm when no candidate exists, plan the change, implement only after approval, then audit the result. Skip stages whose evidence is already settled.
 
 Legacy mapping: `real-grill` and `real-feature-gate` are now `real-plan`; `real-product-audit`, `real-module-audit`, `real-design-audit`, and `real-perf-audit` are modes of `real-audit`.
