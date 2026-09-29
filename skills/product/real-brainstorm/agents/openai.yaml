@@ -1,0 +1,6 @@
+interface:
+  display_name: "Brainstorm"
+  short_description: "Generate or stress-test ideas with research and a separate judge"
+  default_prompt: "Use $real-brainstorm to research, debate and judge options for this question."
+policy:
+  allow_implicit_invocation: true

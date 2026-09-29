@@ -1,12 +1,13 @@
 # Skills for real AI product leads
 
-Four connected workflows for deciding what to build, proving what exists, and improving products with evidence.
+Five connected workflows for deciding what to build, proving what exists, and improving products with evidence.
 
-## The four workflows
+## The five workflows
 
 | Skill | Use it for |
 |---|---|
 | `/real-start` | Route an ambiguous or mixed request |
+| `/real-brainstorm` | Generate ideas or stress-test one: research, 5 Whys debate, separate judge, one recommendation |
 | `/real-plan` | Shape and approve a feature, change, or decision before code |
 | `/real-audit` | Improve a product, module, screen, flow, or measured web performance |
 | `/real-research` | Resolve current external facts from primary sources |
@@ -58,7 +59,7 @@ If the checkout already exists, skip cloning. The installer validates the whole 
 
 ### Claude app (claude.ai and Claude desktop)
 
-Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the four zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all four; `real-plan` and `real-start` expect `real-audit` next to them.
+Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the five zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all five; `real-plan` and `real-start` expect `real-audit` next to them.
 
 To build the zips from a checkout instead:
 
@@ -74,14 +75,15 @@ Each description ends with a version stamp such as `(v0.8.0)`, so the app's skil
 npx skills@latest add giraybatiturk/skills -g -a codex -s '*' -y
 ```
 
-Open a new session after installation. The public list should contain exactly `real-start`, `real-plan`, `real-audit`, and `real-research`.
+Open a new session after installation. The public list should contain exactly `real-start`, `real-brainstorm`, `real-plan`, `real-audit`, and `real-research`.
 
-The supported installation is the complete four-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
+The supported installation is the complete five-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
 
 ## Natural-language routing
 
 Intended routes below depend on client selection; use the explicit command when routing must be deterministic.
 
+- “What feature should we build next in this app?” → `real-brainstorm`: Quick or Deep; Deep adds competitor and pricing research, a 5 Whys debate and a separate judge.
 - “Build medication reminders” → `real-plan`: User story, Analysis, Backend scope, Frontend scope, and Connection before code.
 - “What should we improve next in this product?” → `real-audit` Product mode.
 - “This screen feels crowded” → `real-audit` Design mode, project `DESIGN.md` before the baseline.
@@ -100,10 +102,11 @@ Intended routes below depend on client selection; use the explicit command when 
 | `/real-perf-audit` | `/real-audit` Performance |
 | `real-design-rules` | loaded by `real-plan` and `real-audit` for UI work |
 
-Old commands are intentionally absent from discovery so the menu remains four items. `real-start` knows the mapping and routes old terminology to the new workflows.
+Old commands are intentionally absent from discovery so the menu stays small. `real-start` knows the mapping and routes old terminology to the new workflows.
 
 ## Changelog
 
+- **0.10.0** (2026-09-29): Added `real-brainstorm`: Quick/Deep depth, independent generators (mind map, SCAMPER, reverse brainstorming, role storming), market card with competitor, precedent, willingness-to-pay and revenue-range evidence, 5 Whys debate, pairwise judge blind to idea origin, three user checkpoints and a local report. Reads Real Audit monetization/reporting/orchestration and Real Research rules read-only. `real-start` routes to it; `real-plan` description points idea generation there.
 - **0.8.0** (2026-09-13): Consolidated nine entries into four workflows; added automatic natural-language routing, progressive audit modes, capability-based orchestration, and a four-item install path.
 - **0.7.0** (2026-09-13): Added the product audit.
 - **0.6.0** (2026-09-10): Restored the interactive start router.
