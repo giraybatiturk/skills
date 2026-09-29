@@ -21,6 +21,9 @@ done
 for ref in discovery feature-gate; do
   require_file "$repo/skills/product/real-plan/references/$ref.md"
 done
+for ref in techniques debate market; do
+  require_file "$repo/skills/product/real-brainstorm/references/$ref.md"
+done
 for name in "${names[@]}" "${legacy[@]}"; do
   target="$dest/$name"
   if [[ -L "$target" ]]; then

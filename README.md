@@ -7,7 +7,7 @@ Five connected workflows for deciding what to build, proving what exists, and im
 | Skill | Use it for |
 |---|---|
 | `/real-start` | Route an ambiguous or mixed request |
-| `/real-brainstorm` | Generate options and narrow them to one recommendation |
+| `/real-brainstorm` | Generate ideas or stress-test one: research, 5 Whys debate, separate judge, one recommendation |
 | `/real-plan` | Shape and approve a feature, change, or decision before code |
 | `/real-audit` | Improve a product, module, screen, flow, or measured web performance |
 | `/real-research` | Resolve current external facts from primary sources |
@@ -83,7 +83,7 @@ The supported installation is the complete five-skill bundle. Plan depends on Au
 
 Intended routes below depend on client selection; use the explicit command when routing must be deterministic.
 
-- “Give me angles for this month's newsletter” → `real-brainstorm`: open, explore, close, one recommendation.
+- “What feature should we build next in this app?” → `real-brainstorm`: Quick or Deep; Deep adds competitor and pricing research, a 5 Whys debate and a separate judge.
 - “Build medication reminders” → `real-plan`: User story, Analysis, Backend scope, Frontend scope, and Connection before code.
 - “What should we improve next in this product?” → `real-audit` Product mode.
 - “This screen feels crowded” → `real-audit` Design mode, project `DESIGN.md` before the baseline.
@@ -106,7 +106,7 @@ Old commands are intentionally absent from discovery so the menu stays small. `r
 
 ## Changelog
 
-- **0.10.0** (2026-09-29): Added `real-brainstorm` (open, explore, close; ends in one recommendation and hands approved product ideas to `real-plan`); `real-start` routes to it when no candidate exists.
+- **0.10.0** (2026-09-29): Added `real-brainstorm`: Quick/Deep depth, independent generators (mind map, SCAMPER, reverse brainstorming, role storming), market card with competitor, precedent, willingness-to-pay and revenue-range evidence, 5 Whys debate, pairwise judge blind to idea origin, three user checkpoints and a local report. Reads Real Audit monetization/reporting/orchestration and Real Research rules read-only. `real-start` routes to it; `real-plan` description points idea generation there.
 - **0.8.0** (2026-09-13): Consolidated nine entries into four workflows; added automatic natural-language routing, progressive audit modes, capability-based orchestration, and a four-item install path.
 - **0.7.0** (2026-09-13): Added the product audit.
 - **0.6.0** (2026-09-10): Restored the interactive start router.

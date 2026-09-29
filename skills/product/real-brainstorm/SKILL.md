@@ -1,6 +1,6 @@
 ---
 name: real-brainstorm
-description: "Generate and narrow options before anything is planned: product ideas, content angles, names, strategy, campaigns. Use for brainstorm, beyin fırtınası, fikir üret or when no candidate exists yet. Ends in one recommendation; hands an approved option to real-plan. (v0.10.0)"
+description: "Generate ideas or stress-test one: feature ideas for a product, a business or content idea, names, strategy. Researches existing products, competitors, pricing and willingness to pay; agents debate with 5 Whys and a separate judge picks. Use for brainstorm, beyin fırtınası, fikir üret, 'şöyle bir şey yapsak', 'ne özellik geliştirelim'. For shaping an already chosen change use real-plan. (v0.10.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
@@ -10,46 +10,57 @@ metadata:
 
 # Real brainstorm
 
-Use this when the options themselves are missing. If a candidate already exists and needs shaping, use `real-plan`; if the decision depends on current external facts, use `real-research` first. Follow the open, explore, close sequence (Gray, *Gamestorming*) and keep the three stages visibly separate.
+Use this when options are missing, or when one idea must be judged on whether it would work, earn and sell. If a candidate is already chosen and needs scope, use `real-plan`. A single factual question ("what does competitor X charge?") belongs to `real-research`.
 
-## Frame
+The spine is open → explore → close (Gray, *Gamestorming*). Generation and judgment stay separate: the model that produced ideas does not pick the winner.
 
-State the question in one sentence, the audience or user it serves, and the success signal that would make an idea good. Reuse what the conversation, `PRODUCT.md` or supplied material already establishes; do not ask the user to repeat it. If purpose, audience or a hard constraint (deadline, budget, channel, policy) is unknown and changes which ideas are valid, ask at most 1–3 independent questions with concise choices and a recommendation, then stop. Otherwise continue and list the assumptions you made.
+## Step 0: depth and frame
 
-## Open (diverge)
+Ask the depth first, in the same message as any framing questions (at most three questions in total, each with short choices and a recommendation):
 
-Produce 10–15 distinct ideas with no judgment in this stage. Force range by covering at least four angles:
+- **Quick:** one agent, no web research, about 15 ideas, closes with its own assessment and states that it was not independently judged.
+- **Deep:** research, independent generators, 5 Whys debate, market card per candidate, separate judge.
 
-- the obvious answer done well
-- the opposite or inversion of the obvious answer
-- borrowed from an adjacent domain or competitor pattern (label the source; unverified patterns are hypotheses)
-- the smallest version that could ship or run this week
-- the ambitious version if the main constraint disappeared
-- a user-voice angle: what the audience would say or ask for in their own words
+Frame in one line each: the question, who benefits (end user or customer), the success signal, hard constraints, and 2–4 judging criteria. Read the project's `PRODUCT.md` and existing analytics or review evidence read-only when available instead of asking for facts you can find.
 
-One line per idea. No near-duplicates: merge ideas that differ only in wording.
+**Checkpoint 1:** show the frame and criteria and wait for confirmation or edits. Criteria are fixed before any idea is generated.
 
-## Explore
+## Step 1: research (deep)
 
-Cluster the ideas into 3–5 groups and name each group. Pick the strongest 3–5 candidates across groups. For each candidate give one line each:
+Before generating, gather current evidence in parallel: existing products and competitors, their prices and packaging, user complaints and praise in reviews, precedents that succeeded or failed, and the product's own usage data if accessible. Follow `real-research` rules for sources (primary sources, dated, verified vs inferred). Read `references/market.md` for what to collect. Novelty search covers market products and competitors only, not patents or papers.
 
-- **Why it could work**, tied to the success signal
-- **Key assumption** that must be true
-- **Risk or cost**
-- **Cheapest test** that would confirm or kill the assumption
+If `real-research` or web tools are unavailable, say so, label every market claim unverified and offer Quick mode.
 
-Keep evidence and inference apart: an idea is not validated because it sounds plausible. Mark anything based on external facts you have not checked as unverified.
+## Step 2: open (diverge)
 
-## Close (converge)
+Read `references/techniques.md`. Deep mode dispatches three generator agents that do not see each other's output, each with a different technique set, each using draft → bolder → expand. Pool, remove near-duplicates, keep 25–30. Quick mode runs the same techniques in one pass. Treat the most obvious idea as a baseline to beat, not a candidate.
 
-Score the candidates against 2–4 explicit criteria that follow from the frame (for example impact on the success signal, effort, reversibility, fit with constraints). Show the scores in a compact table only when there are three or more candidates.
+## Step 3: explore
 
-Lead the final answer with **one recommendation**, then the runner-up and why it lost. Add a **change-my-mind condition**: the specific evidence that would make you switch. Do not end with "it depends" or hand the choice back without a position.
+Cluster into named groups and shortlist 4–6 candidates. Keep at least one high-originality candidate, labeled as the wild card, even if it looks less feasible.
 
-## Output and handoff
+**Checkpoint 2:** show the shortlist in one message and ask one question: which to drop or add. The user's context is a criterion the model does not have.
 
-Chat order: recommendation first, then the shortlist with assumptions and tests, then the full idea list collapsed at the end. Keep it scannable; no warm-up paragraph.
+## Step 4: debate (deep)
 
-If the user approves a candidate that is a product or code change, invoke `real-plan` with the chosen idea, frame and assumptions so discovery does not restart. Content, naming or strategy outcomes end here with the next concrete action. Do not implement, publish or send anything from this workflow.
+Read `references/debate.md`. For each candidate the Advocate, Skeptic and Customer agents run two 5 Whys chains (why a customer wants it, why it fails) while the Researcher verifies claims live. Produce a market card per candidate using `references/market.md`.
 
-For a group session, the same stages work as a facilitation script: time-box Open, collect ideas silently before discussion, then dot-vote in Close. Offer this only when the user says others are involved.
+## Step 5: judge
+
+Deep mode: a separate judge agent that is not told which agent or technique produced an idea compares candidates pairwise against the fixed criteria, each pair in both orders. Disagreement between the two orders is reported as a tie, not resolved by the judge's preference.
+
+## Step 6: close
+
+Lead with **one recommendation**, then the runner-up and why it lost, the **change-my-mind condition**, and the **cheapest test** that would confirm or kill it. Revenue appears only as a range with its assumptions.
+
+**Checkpoint 3:** the user decides. If the choice is a product or code change, hand it to `real-plan` with frame, evidence and assumptions so discovery does not restart. Nothing is implemented, published, priced or sent from this workflow.
+
+## Output
+
+Chat: decision first, then the shortlist with one line of evidence each; no warm-up paragraph. Write the full record (frame, sources, all ideas, 5 Whys chains, market cards, judge results) to one local report following the shared Real Audit `references/reporting.md` conventions, at `docs/brainstorm/YYYY-MM-DD-<slug>.md` in the current project unless the user names another place. Link it in chat.
+
+## Dependencies and limits
+
+Resolve `real-audit` and `real-research` from the client's skill catalog or adjacent directories. Their files are read-only for this workflow: never edit them to fit brainstorm needs; put brainstorm-specific rules in this skill's references. Follow Real Audit `references/orchestration.md` for dispatch, independence and verifier capability. If agents are unavailable, run the tracks serially, disclose it and do not claim independent judgment.
+
+Keep evidence and inference apart. Precedent is not proof, a plausible idea is not validated, and a price from a competitor is not willingness to pay for this product.
