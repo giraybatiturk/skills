@@ -15,7 +15,7 @@ require_file() {
 for i in 0 1 2 3 4; do
   require_file "$repo/skills/${sources[$i]}/SKILL.md"
 done
-for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context; do
+for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context deliverable live-audit; do
   require_file "$repo/skills/product/real-audit/references/$ref.md"
 done
 for ref in discovery feature-gate; do

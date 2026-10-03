@@ -133,7 +133,7 @@ class InstallerChecks(unittest.TestCase):
         self.assertEqual(self.install().returncode, 0)
         before = {p.name: p.readlink() for p in self.dest.iterdir()}
         refs = list((self.repo / 'skills/product/real-audit/references').glob('*.md'))
-        self.assertEqual(len(refs), 12)
+        self.assertEqual(len(refs), 14)
         for ref in refs:
             with self.subTest(reference=ref.name):
                 original = ref.read_bytes()
