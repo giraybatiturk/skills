@@ -1,8 +1,8 @@
 # Skills for real AI product leads
 
-Five connected workflows for deciding what to build, proving what exists, and improving products with evidence.
+Six connected workflows for deciding what to build, proving what exists, and improving products with evidence.
 
-## The five workflows
+## The six workflows
 
 | Skill | Use it for |
 |---|---|
@@ -10,7 +10,10 @@ Five connected workflows for deciding what to build, proving what exists, and im
 | `/real-brainstorm` | Generate ideas or stress-test one: research, 5 Whys debate, separate judge, one recommendation |
 | `/real-plan` | Shape and approve a feature, change, or decision before code |
 | `/real-audit` | Improve a product, module, screen, flow, or measured web performance |
+| `/real-check` | Quick automated check of any public URL: one-page owner-facing report, optional outreach draft |
 | `/real-research` | Resolve current external facts from primary sources |
+
+`real-check` and `real-audit` are different jobs. `real-check` takes any public URL with no code or account access, runs in about 30 seconds, is rule-based and deterministic, and writes a one-page report for the site's owner; the site is often someone else's (client, prospect, competitor). `real-audit` is expert judgment on your own product in depth (repo, running app, screens) with prioritized findings, coverage and validation tasks. `real-audit` runs `real-check` first when its scope includes the product's public web surface.
 
 You do not have to type a command. Their descriptions are available to the model, so a request such as “What should we improve in this product?” can invoke `real-audit` automatically. Direct commands remain available when you want a specific workflow.
 
@@ -59,7 +62,7 @@ If the checkout already exists, skip cloning. The installer validates the whole 
 
 ### Claude app (claude.ai and Claude desktop)
 
-Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the five zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all five; `real-plan` and `real-start` expect `real-audit` next to them.
+Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the six zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all six; `real-plan` and `real-start` expect `real-audit` next to them.
 
 To build the zips from a checkout instead:
 
@@ -75,9 +78,13 @@ Each description ends with a version stamp such as `(v0.8.0)`, so the app's skil
 npx skills@latest add giraybatiturk/skills -g -a codex -s '*' -y
 ```
 
-Open a new session after installation. The public list should contain exactly `real-start`, `real-brainstorm`, `real-plan`, `real-audit`, and `real-research`.
+Open a new session after installation. The public list should contain exactly `real-start`, `real-brainstorm`, `real-plan`, `real-audit`, `real-check`, and `real-research`.
 
-The supported installation is the complete five-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
+The supported installation is the complete six-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
+
+## Dependencies
+
+`real-check` needs Node 20+ and downloads Chromium (through Playwright) on first run. Where installing is not permitted, it stops and says so instead of faking a result. The other workflows are instructions only.
 
 ## Natural-language routing
 
@@ -88,6 +95,8 @@ Intended routes below depend on client selection; use the explicit command when 
 - “What should we improve next in this product?” → `real-audit` Product mode.
 - “This screen feels crowded” → `real-audit` Design mode, project `DESIGN.md` before the baseline.
 - “Check the latest App Store rule” → `real-research`, primary sources.
+- “Check https://example.com for broken links before I email the owner” → `real-check`: automated scan of the public URL, one-page report, optional message draft that is never sent.
+- “Audit our checkout flow” → `real-audit`: your own product in depth, evidence from the running app and code.
 - “Is this animation smooth?” → `real-audit` Design with Motion, runtime evidence required.
 
 ## Migration from 0.7
@@ -106,6 +115,7 @@ Old commands are intentionally absent from discovery so the menu stays small. `r
 
 ## Changelog
 
+- **0.11.0** (2026-10-03): Added `real-check`: a quick, rule-based, read-only check of any public URL that writes a plain-language one-page report (HTML + PDF) for the site's owner. Checks that the page opens, browser console errors, broken links on the home page, and the phone layout at 375 px (horizontal overflow, or a missing viewport setting). Optional `--outreach` writes a message draft (at most three findings, no jargon, nothing is sent) and a tracking row; `--control` writes only the tracking row and a neutral draft for an A/B comparison group. False positives are filtered: a failed load from another registrable domain is a warning, only 404, 410, 500, 502 and 504 count as broken links (redirects are followed only within the site), a refused home page (401, 403, 429, 503, Cloudflare challenge) is reported as blocked rather than as a finding, and every write request is blocked together with the console errors it causes. Boundary: `real-check` is for any public URL with no code access; `real-audit` stays the in-depth review of your own product, and `real-audit` now runs `real-check` first as automated evidence when its scope includes a public web surface. `real-start` routes to it; the `real-audit` and `real-start` stamps move to 0.11.0 because their behavior changed. Needs Node 20+ and downloads Chromium on first run.
 - **0.10.0** (2026-09-29): Added `real-brainstorm`: Quick/Deep depth, independent generators (mind map, SCAMPER, reverse brainstorming, role storming), market card with competitor, precedent, willingness-to-pay and revenue-range evidence, 5 Whys debate, pairwise judge blind to idea origin, three user checkpoints and a local report. Reads Real Audit monetization/reporting/orchestration and Real Research rules read-only. `real-start` routes to it; `real-plan` description points idea generation there.
 - **0.8.0** (2026-09-13): Consolidated nine entries into four workflows; added automatic natural-language routing, progressive audit modes, capability-based orchestration, and a four-item install path.
 - **0.7.0** (2026-09-13): Added the product audit.

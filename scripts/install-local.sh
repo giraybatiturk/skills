@@ -2,8 +2,8 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 dest=${1:?Usage: bash scripts/install-local.sh DESTINATION}
-names=(real-start real-brainstorm real-plan real-audit real-research)
-sources=(product/real-start product/real-brainstorm product/real-plan product/real-audit engineering/real-research)
+names=(real-start real-brainstorm real-plan real-audit real-check real-research)
+sources=(product/real-start product/real-brainstorm product/real-plan product/real-audit engineering/real-check engineering/real-research)
 legacy=(real-grill real-feature-gate real-product-audit real-module-audit real-design-audit real-design-rules real-perf-audit)
 require_file() {
   if [[ ! -f "$1" ]]; then
@@ -12,8 +12,11 @@ require_file() {
   fi
 }
 # Preflight the entire bundle and destination before changing any links.
-for i in 0 1 2 3 4; do
+for i in "${!sources[@]}"; do
   require_file "$repo/skills/${sources[$i]}/SKILL.md"
+done
+for file in check.mjs package.json; do
+  require_file "$repo/skills/engineering/real-check/scripts/$file"
 done
 for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context deliverable live-audit; do
   require_file "$repo/skills/product/real-audit/references/$ref.md"
@@ -38,10 +41,10 @@ mkdir -p "$dest"
 for name in "${legacy[@]}"; do
   [[ ! -L "$dest/$name" ]] || unlink "$dest/$name"
 done
-for i in 0 1 2 3 4; do
+for i in "${!names[@]}"; do
   target="$dest/${names[$i]}"
   [[ ! -L "$target" ]] || unlink "$target"
   ln -s "$repo/skills/${sources[$i]}" "$target"
   test -f "$target/SKILL.md"
 done
-printf 'Installed and verified all five workflows in %s\n' "$dest"
+printf 'Installed and verified all six workflows in %s\n' "$dest"

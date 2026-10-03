@@ -1,0 +1,6 @@
+interface:
+  display_name: "Check"
+  short_description: "Quick automated check of a public URL with a one-page report"
+  default_prompt: "Use $real-check to check this URL and write a one-page report."
+policy:
+  allow_implicit_invocation: true
