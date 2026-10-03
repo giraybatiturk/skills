@@ -27,13 +27,24 @@ const USER_AGENT_TOKEN = 'real-check/0.11 (+https://github.com/giraybatiturk/ski
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const BROKEN_STATUSES = new Set([404, 410, 500, 502, 504]);
 const REFUSED_STATUSES = new Set([401, 403, 429, 503]);
-const SKIP_LINK = /(log-?out|sign-?out|delete|remove|unsubscribe|cikis|çıkış)/i;
+// Links that look like an action are never requested, even with GET. Keywords match as substrings anywhere in the
+// decoded, folded path + query text, with no word boundary, so an ordinary address that contains one (for example
+// /blog/how-to-remove-404 or /cancellation-policy) is left unchecked too; skipped links are listed in a warning and in
+// findings.json. Only the `log/out` forms keep a leading boundary (so /blog/outdoor passes), and `cart/add` must not
+// be `cart/address`. Two-part keywords take an optional separator (- _ space). Query KEYS are tested apart: see skipUrl.
+// ponytail: keyword heuristic, deliberately broad: safety over coverage. A site that changes state on a GET under
+// another name is not protected.
+const SEP = '[-_ ]?';
+const SKIP_LINK = new RegExp(`log${SEP}(?:out|off)|sign${SEP}(?:out|off)|opt${SEP}out|unsubscribe|delete|remove|cancel|deactivate|cikis|oturumu?${SEP}kapat|add${SEP}to${SEP}cart|sepete${SEP}ekle|(?<![a-z0-9])(?:log|sign)/(?:out|off)|cart[/?](?:add(?!ress)|remove|update|clear|empty)`);
+// A query key is `confirm` or ends in `token` (token, access_token, csrfToken, authtoken).
+const SKIP_QUERY_KEY = /^(?:confirm|.*token)$/;
 const MAX_LINKS = 50;
 const MAX_REDIRECTS = 5;
 const LINK_CONCURRENCY = 5;
 const LINK_TIMEOUT_MS = 15_000;
 const PAGE_TIMEOUT_MS = 30_000;
 const SETTLE_MS = 2000;
+const GUARD_WINDOW_MS = 2000;
 const CLIP = 90;
 const DESKTOP = { width: 1280, height: 800 };
 const PHONE = { width: 375, height: 812 };
@@ -109,7 +120,9 @@ const firstLine = (s) => String(s).split('\n')[0].trim();
 const unique = (a) => [...new Set(a)];
 const clip = (s, n = CLIP) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const decoded = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+// Decodes percent escapes one valid UTF-8 sequence at a time; an invalid escape (%FF) becomes a space, so it cannot
+// leave the rest of the URL undecoded or glue itself to a neighbouring word.
+const decoded = (s) => s.replace(/%[0-7][0-9a-f]|%[cd][0-9a-f]%[89ab][0-9a-f]|%e[0-9a-f](?:%[89ab][0-9a-f]){2}|%f[0-7](?:%[89ab][0-9a-f]){3}|%[0-9a-f]{2}/gi, (m) => { try { return decodeURIComponent(m); } catch { return ' '; } });
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 function isoDate() {
@@ -120,7 +133,8 @@ function isoDate() {
 
 // Registrable domain = last two labels. Known limitation: for multi-part public suffixes (co.uk, com.tr)
 // two unrelated sites under one suffix compare as the same domain, so a failed third-party resource there is
-// reported as a finding instead of a warning. Kept simple on purpose; a public-suffix list is not worth a dependency here.
+// reported as a finding instead of a warning, and their links count as same-site. Kept simple on purpose;
+// a public-suffix list is not worth a dependency here.
 const registrable = (hostname) => hostname.split('.').slice(-2).join('.');
 
 function parseBrand(raw) {
@@ -195,13 +209,49 @@ function runDir(opts) {
   return dir;
 }
 
-// Write protection: every HTTP request other than GET/HEAD/OPTIONS is aborted, whatever the origin, and
-// every WebSocket is closed before it reaches the server.
-async function protectWrites(context, guard) {
+// Loopback, private and link-local destinations. The URL parser has already normalised forms like 2130706433 or
+// 0x7f.1 to 127.0.0.1 and IPv4-mapped IPv6 to hex groups.
+// ponytail: literal hosts only, no DNS resolution; a public name that resolves to a private address is not caught.
+// Upgrade path: resolve the name and test the address before the request.
+function isPrivateHost(hostname) {
+  const h = hostname.toLowerCase().replace(/^\[|\]$|\.$/g, '');
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  const v4 = h.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+  }
+  const mapped = h.match(/^::ffff:([0-9a-f]+):([0-9a-f]+)$/);
+  if (mapped) {
+    const [hi, lo] = [parseInt(mapped[1], 16), parseInt(mapped[2], 16)];
+    return isPrivateHost(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  }
+  return h === '::' || h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h);
+}
+const isPrivateUrl = (url) => { try { return isPrivateHost(new URL(url).hostname); } catch { return false; } };
+
+const newGuard = () => ({ writes: [], blocked: [], hops: [], aborts: [], sockets: [], navBlocked: '', main: null });
+// Only the checked page's own main frame counts: a popup's navigation is just a blocked request. request.frame() throws
+// when the request has no frame yet (a navigation opened by window.open).
+const isMainNavigation = (request, guard) => { try { return request.isNavigationRequest() && request.frame() === guard.main?.mainFrame(); } catch { return false; } };
+
+// Read-only protection: every HTTP request other than GET/HEAD/OPTIONS is aborted, whatever the origin, and
+// every WebSocket is closed before it reaches the server. Unless the checked URL is itself local, requests the page
+// sends straight to a literal loopback, private or link-local address are aborted too. Not covered: redirect hops
+// (see the request listener in runCheck) and public names that resolve to a private address (see isPrivateHost).
+// `aborts` holds each aborted URL and when, to tell the console errors it causes from genuine ones.
+async function protectWrites(context, guard, allowPrivate) {
   await context.route('**/*', (route) => {
     const request = route.request();
-    if (READ_METHODS.has(request.method())) return route.fallback();
-    guard.writes.push(`${request.method()} ${request.url()}`);
+    if (!READ_METHODS.has(request.method())) {
+      guard.writes.push(`${request.method()} ${request.url()}`);
+    } else if (allowPrivate || !isPrivateUrl(request.url())) {
+      return route.fallback();
+    } else {
+      guard.blocked.push(request.url());
+      if (isMainNavigation(request, guard)) guard.navBlocked = request.url();
+    }
+    guard.aborts.push({ url: request.url(), at: Date.now() });
     return route.abort().catch(() => {});
   });
   await context.routeWebSocket(/.*/, async (ws) => {
@@ -227,22 +277,27 @@ function listenForErrors(page, sink) {
     if (m.type() !== 'error') return;
     const url = m.location().url;
     const text = m.text();
-    sink.push({ text, url, line: (url ? `${text} (${url})` : text).replace(/\s+/g, ' ').trim() });
+    sink.push({ text, url, line: (url ? `${text} (${url})` : text).replace(/\s+/g, ' ').trim(), at: Date.now() });
   });
-  page.on('pageerror', (e) => sink.push({ text: e.message, url: '', line: e.message.replace(/\s+/g, ' ').trim() }));
+  page.on('pageerror', (e) => sink.push({ text: e.message, url: '', line: e.message.replace(/\s+/g, ' ').trim(), at: Date.now() }));
 }
 
-// A failed network load of a resource on another registrable domain usually comes from the machine running the
-// check (DNS filter, ad blocker, TLS-inspecting proxy), not from the site. It is a warning, not a finding.
-function isThirdPartyNetworkError(entry, hostname) {
-  if (!/net::ERR_/.test(entry.text) || !entry.url) return false;
-  try { return registrable(new URL(entry.url).hostname) !== registrable(hostname); } catch { return false; }
+// A failed load (network error or HTTP error) of a resource on another registrable domain usually comes from the
+// machine running the check (DNS filter, ad blocker, TLS-inspecting proxy) or from someone else's server, not from
+// the site. It is a warning, not a finding. `ownDomains` holds the requested and the final (post-redirect) domain.
+function isThirdPartyFailedLoad(entry, ownDomains) {
+  if (!/net::ERR_|^Failed to load resource/.test(entry.text) || !entry.url) return false;
+  try { return !ownDomains.has(registrable(new URL(entry.url).hostname)); } catch { return false; }
 }
 
-const skipUrl = (u) => SKIP_LINK.test(decoded(u.pathname + u.search));
+// Lower-case, strip diacritics and fold Turkish dotless ı, so ÇIKIŞ, çıkış and cikis all compare as cikis.
+const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').toLowerCase();
+const skipUrl = (u) =>
+  SKIP_LINK.test(fold(decoded(u.pathname)) + fold(decoded(u.search))) ||
+  [...new URLSearchParams(u.search).keys()].some((k) => SKIP_QUERY_KEY.test(k.toLowerCase()));
 
-// GET one link. Redirects are followed by hand, only while the target stays on an allowed host and is not a
-// logout-style URL; a redirect that leaves the site ends the check for that link (neither broken nor requested).
+// GET one link. Redirects are followed by hand, only while the target stays on an allowed host and does not look
+// like an action (see SKIP_LINK); a redirect that leaves the site ends the check for that link (neither broken nor requested).
 async function fetchLink(context, url, allowedHosts, userAgent) {
   let current = url;
   try {
@@ -279,19 +334,26 @@ async function checkLinks(context, page, opts, userAgent, warnings) {
   }
   // getAttribute + base URL: `a.href` is not a string on SVG anchors.
   const hrefs = await page.$$eval('a[href]', (as) => as.map((a) => { try { return new URL(a.getAttribute('href'), document.baseURI).href; } catch { return ''; } }));
-  const links = unique(hrefs.map((h) => h.split('#')[0]))
-    .filter((h) => {
-      let u;
-      try { u = new URL(h); } catch { return false; }
-      return /^https?:$/.test(u.protocol) && allowedHosts.has(u.host.toLowerCase()) && !skipUrl(u);
-    })
-    .slice(0, MAX_LINKS);
+  const sameSite = unique(hrefs.map((h) => h.split('#')[0])).filter((h) => {
+    let u;
+    try { u = new URL(h); } catch { return false; }
+    return /^https?:$/.test(u.protocol) && allowedHosts.has(u.host.toLowerCase());
+  });
+  const skipped = sameSite.filter((h) => skipUrl(new URL(h)));
+  const eligible = sameSite.filter((h) => !skipUrl(new URL(h)));
+  const links = eligible.slice(0, MAX_LINKS);
+  if (skipped.length) {
+    warnings.push(`${skipped.length} link(s) were not checked because they look like actions (log out, delete, cancel, cart): ${skipped.slice(0, 5).join('; ')}${skipped.length > 5 ? `; and ${skipped.length - 5} more` : ''}.`);
+  }
+  if (eligible.length > links.length) {
+    warnings.push(`The home page has ${eligible.length} same-site links to check; only the first ${links.length} were checked.`);
+  }
   const results = await pool(links, LINK_CONCURRENCY, (url) => fetchLink(context, url, allowedHosts, userAgent));
   const broken = results.filter((r) => BROKEN_STATUSES.has(r.status)).map((r) => `${r.status} ${r.url}`);
   // Everything else that failed (401/403/429/503, other 4xx/5xx, network errors) is often bot protection
   // (for example a Cloudflare challenge) while a real visitor sees the page; warn, do not report.
   const unclear = results.filter((r) => r.error || (r.status >= 400 && !BROKEN_STATUSES.has(r.status))).map((r) => `${r.error ?? r.status} ${r.url}`);
-  return { checked: links.length, broken, unclear };
+  return { checked: links.length, found: eligible.length, skipped, broken, unclear };
 }
 
 function renderHtml(T, opts, findings, shots) {
@@ -356,7 +418,8 @@ function summaryOf(opts, status, findings, warnings, extra = {}) {
 async function runCheck(opts, chromium) {
   const T = TEXT[opts.lang];
   const warnings = [];
-  const guard = { writes: [], sockets: [] };
+  const guard = newGuard();
+  const allowPrivate = isPrivateHost(opts.hostname);
   const errors = [];
   const shots = {};
   let browser;
@@ -365,16 +428,25 @@ async function runCheck(opts, chromium) {
 
     // Append the check's identity to Chromium's own user agent; do not hide that the visit is automated.
     const probe = await browser.newContext({ serviceWorkers: 'block' });
-    await protectWrites(probe, guard);
+    await protectWrites(probe, guard, allowPrivate);
     const defaultUa = await (await probe.newPage()).evaluate(() => navigator.userAgent);
     await probe.close();
     const userAgent = `${defaultUa} ${USER_AGENT_TOKEN}`;
 
     const open = async (extra) => {
       const context = await browser.newContext({ ...extra, userAgent, serviceWorkers: 'block' });
-      await protectWrites(context, guard);
+      await protectWrites(context, guard, allowPrivate);
       const page = await context.newPage();
+      guard.main = page;
       listenForErrors(page, errors);
+      // Redirect hops are not routed: Playwright sees them only after Chromium has followed them, so they can be reported, not aborted.
+      // ponytail: detection only; upgrade path is a proxy or PAC file that refuses private destinations on every hop
+      // (it would replace the system proxy settings, so it is not done here).
+      page.on('request', (r) => {
+        if (allowPrivate || !r.redirectedFrom() || !isPrivateUrl(r.url())) return;
+        guard.hops.push(r.url());
+        if (isMainNavigation(r, guard)) guard.navBlocked = r.url();
+      });
       return { context, page };
     };
     // goto waits for the document only; a page that never fires `load` is still checked (with a warning).
@@ -398,7 +470,14 @@ async function runCheck(opts, chromium) {
     } catch (e) {
       reason = firstLine(e.message);
     }
-    if (response) {
+    const doesNotOpen = (why) => {
+      const csv = opts.outreach ? trackRow(opts, 'report', 'does-not-open', `site does not open: ${why}`) : undefined;
+      emit({ status: 'does-not-open', host: opts.host, reason: why, csv });
+      return 4;
+    };
+    const redirectedAway = () => `the page redirected to a private or local address (${new URL(guard.navBlocked).host}); the check does not continue there`;
+    if (guard.navBlocked) reason = redirectedAway();
+    if (response && !guard.navBlocked) {
       const status = response.status();
       if (REFUSED_STATUSES.has(status) || response.headers()['cf-mitigated']) {
         const refused = `HTTP ${status}: the automated visit was refused (likely bot protection); verify in your own browser`;
@@ -408,13 +487,15 @@ async function runCheck(opts, chromium) {
       }
       if (status >= 400) reason = `HTTP ${status}`;
     }
-    if (reason) {
-      const csv = opts.outreach ? trackRow(opts, 'report', 'does-not-open', `site does not open: ${reason}`) : undefined;
-      emit({ status: 'does-not-open', host: opts.host, reason, csv });
-      return 4;
-    }
+    if (reason) return doesNotOpen(reason);
     // 2. console: errors and page errors through load + 2 s
     await desktop.page.waitForTimeout(SETTLE_MS);
+    // A navigation the guard aborted after load (meta refresh, timer) leaves the page on a browser error page; never
+    // measure or check links there.
+    if (guard.navBlocked) return doesNotOpen(redirectedAway());
+    if (desktop.page.url().startsWith('chrome-error:')) return doesNotOpen('the page ended on a browser error page');
+    // The site's own registrable domains: the one typed and the one the home page ended on after redirects.
+    const ownDomains = new Set([registrable(opts.hostname), registrable(new URL(desktop.page.url()).hostname)]);
     shots.desktop = (await desktop.page.screenshot({ type: 'jpeg', quality: 72 })).toString('base64');
 
     // 3. links (desktop page, GET only)
@@ -430,6 +511,7 @@ async function runCheck(opts, chromium) {
         warnings.push(`The phone-width visit answered HTTP ${phoneResponse?.status() ?? 'none'}; phone layout was not checked.`);
       } else {
         await phone.page.waitForTimeout(SETTLE_MS);
+        if (phone.page.url().startsWith('chrome-error:')) throw new Error('the page ended on a browser error page');
         // Layout width, not window.innerWidth: without a viewport meta tag innerWidth inflates to 980.
         layout = await phone.page.evaluate((width) => {
           const over = [...document.querySelectorAll('body *')].filter((e) => e.getBoundingClientRect().right > width);
@@ -454,27 +536,33 @@ async function runCheck(opts, chromium) {
     // --- findings and warnings ---
     const findings = [];
     const blockedWrites = unique(guard.writes);
+    const blockedPrivate = unique(guard.blocked);
+    const followedHops = unique(guard.hops);
     const blockedSockets = unique(guard.sockets);
-    const guardActive = blockedWrites.length + blockedSockets.length > 0;
+    const guardActive = blockedWrites.length + blockedPrivate.length + blockedSockets.length > 0;
 
-    // Console errors the read-only guard itself caused are not the site's defects.
-    // 1) "Failed to load resource" whose URL is the aborted write (the URL on that line is the request URL).
-    const blockedUrls = new Set(blockedWrites.map((b) => b.slice(b.indexOf(' ') + 1)));
+    // Console errors the guard itself caused are not the site's defects.
+    // 1) "Failed to load resource" whose URL is an aborted request (the URL on that line is the request URL), logged
+    //    shortly after that abort.
     // 2) Generic network errors raised by page code after an aborted fetch/XHR carry the script or page URL, not the
-    //    request URL, so they are matched by text while any write was blocked. Likewise for closed WebSockets.
+    //    request URL, so they are matched by text and by time: logged shortly after any abort.
+    //    ponytail: time correlation is a heuristic (a genuine failure inside the window is dropped too, and kept in
+    //    findings.json); upgrade path is matching the error to the request that caused it by initiator.
+    const afterAbort = (e, url) => guard.aborts.some((a) => (!url || a.url === url) && e.at >= a.at && e.at - a.at <= GUARD_WINDOW_MS);
+    // Closed WebSockets: matched by text while any socket was closed (no time window).
     const guardSideEffect = (e) =>
-      (/^Failed to load resource/i.test(e.text) && e.url && blockedUrls.has(e.url)) ||
-      (blockedWrites.length > 0 && /Failed to fetch|NetworkError|Load failed|net::ERR_FAILED/i.test(e.text)) ||
+      (/^Failed to load resource/i.test(e.text) && e.url && afterAbort(e, e.url)) ||
+      (afterAbort(e) && /Failed to fetch|NetworkError|Load failed|net::ERR_FAILED/i.test(e.text)) ||
       (blockedSockets.length > 0 && /WebSocket/i.test(e.text));
-    const seen = new Set();
-    const deduped = errors.filter((e) => !seen.has(e.line) && seen.add(e.line));
-    const dropped = deduped.filter(guardSideEffect);
-    const relevant = deduped.filter((e) => !dropped.includes(e));
-    const thirdParty = relevant.filter((e) => isThirdPartyNetworkError(e, opts.hostname));
+    // Classify before de-duplicating: the same text can be a side effect at one moment and a genuine error at another.
+    const dedupe = (list) => { const seen = new Set(); return list.filter((e) => !seen.has(e.line) && seen.add(e.line)); };
+    const dropped = dedupe(errors.filter(guardSideEffect));
+    const relevant = dedupe(errors.filter((e) => !guardSideEffect(e)));
+    const thirdParty = relevant.filter((e) => isThirdPartyFailedLoad(e, ownDomains));
     const own = relevant.filter((e) => !thirdParty.includes(e));
 
     if (thirdParty.length) {
-      warnings.push(`${thirdParty.length} third-party resource(s) failed to load on this machine (for example ${thirdParty[0].line.slice(0, 160)}); not counted as a finding. This could be this machine's network: DNS filter, ad blocker, TLS-inspecting proxy. Verify in your own browser. Remaining console errors may be a side effect of the same block.`);
+      warnings.push(`${thirdParty.length} third-party resource(s) failed to load (for example ${thirdParty[0].line.slice(0, 160)}); not counted as a finding. A network failure can come from this machine (DNS filter, ad blocker, TLS-inspecting proxy), an HTTP error from the third party's own server. Verify in your own browser. Remaining console errors may be a side effect of the same failure.`);
     }
     if (own.length) {
       const lines = own.map((e) => e.line.slice(0, 220));
@@ -505,15 +593,21 @@ async function runCheck(opts, chromium) {
     if (guardActive) {
       const parts = [];
       if (blockedWrites.length) parts.push(`${blockedWrites.length} write request(s) were blocked by the read-only guard (for example ${blockedWrites[0].slice(0, 160)})`);
+      if (blockedPrivate.length) parts.push(`${blockedPrivate.length} request(s) to private or local addresses were blocked (for example ${blockedPrivate[0].slice(0, 160)})`);
       if (blockedSockets.length) parts.push(`${blockedSockets.length} WebSocket connection(s) were closed by the read-only guard`);
-      warnings.push(`${parts.join('; ')}.${dropped.length ? ` ${dropped.length} console error(s) caused by them were not counted as findings.` : ''}`);
-      if (own.length) warnings.push('Console findings may be a side effect of blocked writes; verify in your own browser.');
+      warnings.push(`${parts.join('; ')}.${dropped.length ? ` ${dropped.length} console error(s) possibly caused by them were not counted as findings.` : ''}`);
+      if (own.length) warnings.push('Console findings may be a side effect of blocked requests; verify in your own browser.');
     }
 
+    if (followedHops.length) {
+      warnings.push(`${followedHops.length} redirect(s) led to a private or local address (for example ${followedHops[0].slice(0, 160)}); the browser followed them before they could be stopped.`);
+    }
+    // Kept in findings.json so nothing the guard or the link rules left out is lost.
+    const detail = { links: { checked: links.checked, found: links.found, skipped: links.skipped }, droppedConsole: dropped.map((e) => e.line) };
     if (!findings.length) {
       const dir = runDir(opts);
       const jsonPath = path.join(dir, 'findings.json');
-      const summary = summaryOf(opts, 'no-findings', [], warnings, { html: null, pdf: null });
+      const summary = summaryOf(opts, 'no-findings', [], warnings, { html: null, pdf: null, ...detail });
       writeFileSync(jsonPath, JSON.stringify(summary, null, 2));
       const csv = opts.outreach ? trackRow(opts, 'report', 'no-findings', 'automated check found nothing worth reporting; not suitable for a report-based outreach') : undefined;
       emit({ ...summary, slug: opts.slug, json: jsonPath, dir, csv });
@@ -528,14 +622,14 @@ async function runCheck(opts, chromium) {
     writeFileSync(htmlPath, renderHtml(T, opts, findings, shots));
     // The report is static: print it without scripts, service workers or network writes.
     const printer = await browser.newContext({ serviceWorkers: 'block', javaScriptEnabled: false });
-    await protectWrites(printer, { writes: [], sockets: [] });
+    await protectWrites(printer, newGuard(), false);
     const printPage = await printer.newPage();
     await printPage.goto(pathToFileURL(htmlPath).href);
     await printPage.pdf({ path: pdfPath, format: 'A4', printBackground: true });
     await printer.close();
     const pages = pdfPageCount(pdfPath);
     if (pages > 1) warnings.push(`The PDF runs to ${pages} pages instead of one; check the report before sending it.`);
-    const summary = summaryOf(opts, 'report', findings, warnings, { html: htmlPath, pdf: pdfPath });
+    const summary = summaryOf(opts, 'report', findings, warnings, { html: htmlPath, pdf: pdfPath, ...detail });
     writeFileSync(jsonPath, JSON.stringify(summary, null, 2));
     const csv = opts.outreach ? trackRow(opts, 'report', 'draft', `${findings.length} findings: ${findings.map((f) => f.type).join(', ')}`) : undefined;
     emit({ ...summary, slug: opts.slug, json: jsonPath, dir, csv });

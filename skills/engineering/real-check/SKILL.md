@@ -1,6 +1,6 @@
 ---
 name: real-check
-description: "Quick automated check of a public URL: site kontrol, siteyi tara, URL check, broken links, console errors, mobile overflow, prospect, client or competitor site report. Rule-based and read-only, about 30 seconds, no code or account access; writes a one-page owner-facing report (HTML + PDF) and, on request, an outreach message draft and a tracking row. Never sends anything. For an in-depth review of your own product use real-audit. (v0.11.0)"
+description: "Quick automated check of a public URL: site kontrol, siteyi tara, URL check, broken links, console errors, mobile overflow, prospect, client or competitor site report. Rule-based and read-only, typically about 30 seconds, no code or account access; writes a one-page owner-facing report (HTML + PDF) and, on request, an outreach message draft and a tracking row. Never sends anything. For an in-depth review of your own product use real-audit. (v0.11.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
@@ -10,7 +10,7 @@ metadata:
 
 # Real check
 
-A fast, deterministic look at one public URL, written for the site's owner. It is often someone else's site: a client, a prospect, a competitor. It reads the home page and its links, nothing else, and says so. `<skill>` below means the directory that contains this `SKILL.md`; resolve it from the client's skill catalog.
+A fast, deterministic look at one public URL, written for the site's owner. It is often someone else's site: a client, a prospect, a competitor. It reads the home page and its links, nothing else, and says so. It typically takes about 30 seconds; a slow site with many links can take a few minutes. `<skill>` below means the directory that contains this `SKILL.md`; resolve it from the client's skill catalog.
 
 Not an audit. `real-check` is a rule-based scan of a public URL with no code or account access; `real-audit` is expert judgment on your own product (repo, running app, screens) with prioritized findings, coverage and validation tasks. A clean `real-check` is not proof the site works.
 
@@ -37,13 +37,15 @@ Not an audit. `real-check` is a rule-based scan of a public URL with no code or 
    - `5` the check could not run: show the tail of stderr and stop.
    - `6` the home page refused the automated visit (likely bot protection): say so, tell the user to verify in their own browser, and stop. Do not write a message.
 
+   With `--outreach`, a run that ends in exit 3, 4 or 6 also writes a tracking row (`group=report`, status `no-findings`, `does-not-open` or `blocked`) although no report or message exists.
+
    Show every entry of `warnings[]` verbatim. If a console finding coexists with a network warning, ask the user to confirm it in their own browser before it is used in a message.
 
    When called from `real-audit`, run without `--outreach` or `--control` and skip the preview server. Return to the caller: the `findings.json` path (`json` in the JSON line; also written on exit 3), the warnings, and on exit 3, 4 or 6 the status and reason. The screenshots are embedded in the HTML report (`html`), not saved as separate files.
 
    Done when the exit code is handled, the findings are listed one line each and every warning is shown.
 
-4. **Outreach (only with `--outreach` or `--control`, and only after exit 0).** Write `<slug>-message.md` into the run folder (`slug` and `dir` in the JSON line; the same folder as the report). Top line, as a warning: "Before sending: check consent rules for unsolicited commercial messages in the recipient's jurisdiction (for example GDPR/ePrivacy in the EU, ETK/İYS in Türkiye). Not verified by this skill." Then two drafts in the report language:
+4. **Outreach (only with `--outreach` or `--control`, and only after exit 0).** The script writes the tracking row; you write the message. Runs that ended in exit 3, 4 or 6 have a row but get no message. Write `<slug>-message.md` into the run folder (`slug` and `dir` in the JSON line; the same folder as the report). Top line, as a warning: "Before sending: check consent rules for unsolicited commercial messages in the recipient's jurisdiction (for example GDPR/ePrivacy in the EU, ETK/İYS in Türkiye). Not verified by this skill." Then two drafts in the report language:
    - **LinkedIn:** at most 600 characters.
    - **Email:** subject line and at most 120 words.
 
@@ -63,10 +65,12 @@ Not an audit. `real-check` is a rule-based scan of a public URL with no code or 
 
 ## Boundaries
 
-- Home page and the same-site links on it only (first 50, GET, redirects followed by hand and only within the site). No form submission, checkout or login. Every HTTP request other than GET, HEAD and OPTIONS is aborted and every WebSocket is closed; console errors caused by that guard are dropped and reported as a warning.
-- Rule-based, not a quality score. A third-party network failure, or a link that answers 401, 403, 429 or 503, is a warning, not a finding.
-- The browser identifies itself as automated (`real-check/0.11` in the user agent). The check does not read `robots.txt`; it loads the home page twice (desktop and phone width) and sends up to 50 GET requests to the same host.
+- Home page and the same-site links on it only (first 50, GET, redirects followed by hand and only within the site). No form submission, checkout or login. Every HTTP request other than GET, HEAD and OPTIONS is aborted and every WebSocket is closed; console errors that follow a blocked request are not counted as findings (a "Failed to load resource" line for the blocked URL, or a generic network error such as "Failed to fetch", within about 2 seconds of a blocked request; WebSocket errors after a closed WebSocket, with no time window). They are reported as "possibly caused" in a warning and kept in `findings.json`.
+- Links that look like an action are never requested, and a redirect to one is not followed. The path and query are decoded and folded (case, Turkish diacritics) first. These keywords match anywhere in that address text, with no word boundary: log out, log off, sign out, sign off, opt out, unsubscribe, delete, remove, cancel, deactivate, add to cart, `cikis` (`çıkış`, `ÇIKIŞ`), `oturum kapat`, `oturumu kapat`, `sepete ekle`. The two-part words may be written with `-`, `_`, a space or nothing (`logout`, `add_to_cart`, `oturumu%20kapat`); `log/out` and `sign/out` also match, but only at the start of a word, so `/blog/outdoor` is checked. `cart` followed by `/` or `?` and add, remove, update, clear or empty matches too (`/cart/address` does not). Separately, a link is skipped when a query parameter KEY is `confirm` or ends in `token` (`token`, `access_token`, `csrfToken`); `token` text in the path or inside a parameter value does not count. Because keywords match anywhere, an ordinary page whose address contains one (for example `/blog/how-to-remove-404`, `/cancellation-policy`, `/deleted`) is also left unchecked. Skipped links are reported as not checked in one warning and listed in `findings.json`, so a real broken page behind such an address is not checked either. This is a keyword heuristic that errs towards skipping: a site that changes state on a GET under another name is not protected.
+- Requests the page sends straight to loopback, private and link-local addresses are aborted and counted in a warning unless the checked URL is itself local; literal addresses only, no DNS lookup. A redirect hop to such an address cannot be stopped before the browser follows it, so it is only detected. If the checked page itself redirects or navigates there, or ends on a browser error page, the check stops with exit 4; a popup's blocked navigation is only counted in the warning. The late-navigation check runs once, after the roughly 2 s settle wait of the desktop visit, so a navigation later than that is not detected (measured: 1.5 s after load gave exit 4, 2.6 s gave exit 3 with no mention).
+- Rule-based, not a quality score. A failed load of a third-party resource (network error or HTTP error), or a link that answers 401, 403, 429 or 503, is a warning, not a finding. The same-site test compares the last two host labels, so under suffixes like `.com.tr` or `.co.uk` unrelated sites count as the same site.
+- The browser identifies itself as automated (`real-check/0.11` in the user agent). The check does not read `robots.txt`; it loads the home page twice (desktop and phone width) and requests up to 50 links, each following up to 5 same-site redirects. When more than 50 links qualify, a warning says how many qualified and that only the first 50 were checked.
 
 ## Experiment
 
-When the user runs an outreach A/B, read `outreach.csv`. If the report and control groups differ in size by 2 or more, say so in one line. The decision rule belongs to the user; do not set one.
+When the user runs an outreach A/B, read `outreach.csv`. Count only rows whose `status` is `draft` or a later status; rows with `no-findings`, `does-not-open` or `blocked` never had a report or message. If the report and control groups differ in size by 2 or more, say so in one line. The decision rule belongs to the user; do not set one.
