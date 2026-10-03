@@ -31,11 +31,12 @@ const REFUSED_STATUSES = new Set([401, 403, 429, 503]);
 // decoded, folded path + query text, with no word boundary, so an ordinary address that contains one (for example
 // /blog/how-to-remove-404 or /cancellation-policy) is left unchecked too; skipped links are listed in a warning and in
 // findings.json. Only the `log/out` forms keep a leading boundary (so /blog/outdoor passes), and `cart/add` must not
-// be `cart/address`. Two-part keywords take an optional separator (- _ space). Query KEYS are tested apart: see skipUrl.
+// be `cart/address`; a cart address also matches on an action word anywhere in its query (/cart?action=add).
+// Two-part keywords take an optional separator (- _ space). Query KEYS are tested apart: see skipUrl.
 // ponytail: keyword heuristic, deliberately broad: safety over coverage. A site that changes state on a GET under
 // another name is not protected.
 const SEP = '[-_ ]?';
-const SKIP_LINK = new RegExp(`log${SEP}(?:out|off)|sign${SEP}(?:out|off)|opt${SEP}out|unsubscribe|delete|remove|cancel|deactivate|cikis|oturumu?${SEP}kapat|add${SEP}to${SEP}cart|sepete${SEP}ekle|(?<![a-z0-9])(?:log|sign)/(?:out|off)|cart[/?](?:add(?!ress)|remove|update|clear|empty)`);
+const SKIP_LINK = new RegExp(`log${SEP}(?:out|off)|sign${SEP}(?:out|off)|opt${SEP}out|unsubscribe|delete|remove|cancel|deactivate|cikis|oturumu?${SEP}kapat|add${SEP}to${SEP}cart|sepete${SEP}ekle|(?<![a-z0-9])(?:log|sign)/(?:out|off)|cart/(?:add(?!ress)|remove|update|clear|empty)|cart[^?]*[?].*(?:add(?!ress)|update|clear|empty)`);
 // A query key is `confirm` or ends in `token` (token, access_token, csrfToken, authtoken).
 const SKIP_QUERY_KEY = /^(?:confirm|.*token)$/;
 const MAX_LINKS = 50;
