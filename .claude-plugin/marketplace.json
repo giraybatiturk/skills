@@ -9,7 +9,7 @@
     {
       "name": "giraybatiturk-skills",
       "source": "./",
-      "description": "Five connected product workflows: start, brainstorm, plan, audit and research. Detailed modes and design rules load only when needed.",
+      "description": "Six connected product workflows: start, brainstorm, plan, audit, check and research. Detailed modes and design rules load only when needed.",
       "category": "engineering",
       "keywords": [
         "product",

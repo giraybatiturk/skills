@@ -1,5 +1,6 @@
 .DS_Store
 dist/
+skills/engineering/real-check/scripts/node_modules/
 
 # Personal machine setup; belongs in a dotfiles repo, not distributed here
 bootstrap.sh

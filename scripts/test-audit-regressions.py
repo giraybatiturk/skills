@@ -126,14 +126,14 @@ class InstallerChecks(unittest.TestCase):
     def test_complete_and_repeat_install(self):
         for _ in range(2):
             self.assertEqual(self.install().returncode, 0)
-            self.assertEqual(len(list(self.dest.iterdir())), 5)
+            self.assertEqual(len(list(self.dest.iterdir())), 6)
             self.assertTrue(all((p / 'SKILL.md').is_file() for p in self.dest.iterdir()))
 
     def test_each_audit_reference_required_before_mutation(self):
         self.assertEqual(self.install().returncode, 0)
         before = {p.name: p.readlink() for p in self.dest.iterdir()}
         refs = list((self.repo / 'skills/product/real-audit/references').glob('*.md'))
-        self.assertEqual(len(refs), 12)
+        self.assertEqual(len(refs), 14)
         for ref in refs:
             with self.subTest(reference=ref.name):
                 original = ref.read_bytes()

@@ -1,10 +1,10 @@
 ---
 name: real-audit
-description: Audit existing code, modules, screens or products. Use for review, denetle, audit, missing behavior, UX quality, readiness or performance checks. Report evidence-backed defects without designing their remedy; apply fixes only when separately authorized. Covers produced visual deliverables (catalogue, deck, poster, artboard) in Deliverable mode. (v0.9.0)
+description: Audit existing code, modules, screens or products. Use for review, denetle, audit, missing behavior, UX quality, readiness or performance checks. Report evidence-backed defects without designing their remedy; apply fixes only when separately authorized. Covers produced visual deliverables (catalogue, deck, poster, artboard) in Deliverable mode. For a quick automated scan of any public URL (yours or someone else's), use real-check. (v0.11.0)
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.9.0
+  version: 0.11.0
   source: https://github.com/giraybatiturk/skills
 ---
 
@@ -78,6 +78,8 @@ This skill reports defects; it does not design their remedy. Establish what is w
 For interface work, read `references/design-rules.md`. The project's own `DESIGN.md` takes precedence over that baseline. Render and measure mobile first, then desktop, then apply the rules.
 
 When the target is a running production system with real users and data, read `references/live-audit.md` before inspecting it. An audit observes; it must not alter state, spend the account's budget or leave residue, and its own traffic must not be reported as user behaviour.
+
+When the selected scope includes the product's public web surface (Product, Design, Performance or whole-product), run `real-check` on its public URL after scope is chosen, as automated first evidence and without outreach flags. Resolve it from the client's skill catalog, or the adjacent `../real-check` directory (repository layout: `../../engineering/real-check`). Pass `--out` as the audit report's folder or a temporary directory outside the audited workspace, so the audit leaves nothing in the product. On a live site the run adds two page views and requests up to 50 links, each following up to 5 same-site redirects, to its analytics; state that in the report. Cite its `findings.json` and, when a report was written (exit 3 has none), the screenshots embedded in its HTML report as evidence; its findings remain subject to this audit's applicability rules and priority judgment, and a clean `real-check` result is not coverage. If `real-check` is unavailable or cannot install its browser, state that and continue.
 
 Keep a bounded audit single-agent. For critical, external, sensitive, cross-repository, or explicitly orchestrated work, read `references/orchestration.md`.
 

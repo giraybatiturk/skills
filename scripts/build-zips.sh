@@ -6,6 +6,6 @@ out="$root/dist"
 rm -rf "$out"; mkdir -p "$out"
 for rel in $(jq -r '.skills[]' "$root/.claude-plugin/plugin.json"); do
   dir="$root/$rel"; name="$(basename "$dir")"
-  (cd "$(dirname "$dir")" && zip -qr "$out/$name.zip" "$name" -x '*.DS_Store')
+  (cd "$(dirname "$dir")" && zip -qr "$out/$name.zip" "$name" -x '*.DS_Store' '*/node_modules/*')
   echo "$out/$name.zip"
 done
