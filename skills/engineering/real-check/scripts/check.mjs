@@ -14,9 +14,9 @@
 // The last stdout line is JSON for exit 0, 3, 4 and 6; exit 2 and 5 write only to stderr.
 
 import { createRequire } from 'node:module';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 // Resolve playwright from scripts/node_modules, wherever the skill is installed.
@@ -33,10 +33,41 @@ const REFUSED_STATUSES = new Set([401, 403, 429, 503]);
 // findings.json. Only the `log/out` forms keep a leading boundary (so /blog/outdoor passes), and `cart/add` must not
 // be `cart/address`; a cart address also matches on an action word anywhere in its query (/cart?action=add).
 // Two-part keywords take an optional separator (- _ space). Query KEYS are tested apart: see skipUrl.
+// Languages: English, Turkish, German, French, Spanish, Italian, Portuguese, Dutch. The non-English words come from
+// general knowledge of those languages, not from measured sites; other languages are not covered. Words are written as
+// fold() leaves them (löschen is `loschen`, déconnexion is `deconnexion`). A few short words (salir, sair, esci) would skip
+// many ordinary addresses as substrings, so they match only as a whole token: no letter directly before or after.
 // ponytail: keyword heuristic, deliberately broad: safety over coverage. A site that changes state on a GET under
 // another name is not protected.
 const SEP = '[-_ ]?';
-const SKIP_LINK = new RegExp(`log${SEP}(?:out|off)|sign${SEP}(?:out|off)|opt${SEP}out|unsubscribe|delete|remove|cancel|deactivate|cikis|oturumu?${SEP}kapat|add${SEP}to${SEP}cart|sepete${SEP}ekle|(?<![a-z0-9])(?:log|sign)/(?:out|off)|cart/(?:add(?!ress)|remove|update|clear|empty)|cart[^?]*[?].*(?:add(?!ress)|update|clear|empty)`);
+const SKIP_WORDS = [
+  // English
+  `log${SEP}(?:out|off)`, `sign${SEP}(?:out|off)`, `opt${SEP}out`, 'unsubscribe', 'delete', 'remove', 'cancel', 'deactivate', `add${SEP}to${SEP}cart`,
+  // Turkish
+  'cikis', `oturumu?${SEP}kapat`, `sepete${SEP}ekle`,
+  // German
+  'abmelden', 'ausloggen', 'loschen', 'loeschen', 'kundigen', 'kuendigen', 'stornieren', 'abbestellen', 'entfernen',
+  // French
+  'deconnex', 'deconnect', 'supprim', 'desabonn', 'desinscri',
+  // Spanish
+  `cerrar${SEP}sesion`, 'desconectar', 'eliminar', 'borrar', `darse${SEP}de${SEP}baja`,
+  // Italian
+  'disconnett', 'disconness', 'elimina', 'disiscri', 'rimuovi',
+  // Portuguese
+  `terminar${SEP}sessao`, `encerrar${SEP}sessao`, 'excluir', 'apagar', 'descadastrar',
+  // Dutch
+  'uitloggen', 'afmelden', 'verwijderen', 'uitschrijven', 'opzeggen',
+  // Shared stem: annuler, annulla, annuleren
+  'annul',
+];
+const SKIP_TOKENS = ['salir', 'sair', 'esci'];
+const SKIP_LINK = new RegExp([
+  ...SKIP_WORDS,
+  `(?<![a-z])(?:${SKIP_TOKENS.join('|')})(?![a-z])`,
+  '(?<![a-z0-9])(?:log|sign)/(?:out|off)',
+  'cart/(?:add(?!ress)|remove|update|clear|empty)',
+  'cart[^?]*[?].*(?:add(?!ress)|update|clear|empty)',
+].join('|'));
 // A query key is `confirm` or ends in `token` (token, access_token, csrfToken, authtoken).
 const SKIP_QUERY_KEY = /^(?:confirm|.*token)$/;
 const MAX_LINKS = 50;
@@ -123,7 +154,7 @@ const clip = (s, n = CLIP) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 // Decodes percent escapes one valid UTF-8 sequence at a time; an invalid escape (%FF) becomes a space, so it cannot
 // leave the rest of the URL undecoded or glue itself to a neighbouring word.
-const decoded = (s) => s.replace(/%[0-7][0-9a-f]|%[cd][0-9a-f]%[89ab][0-9a-f]|%e[0-9a-f](?:%[89ab][0-9a-f]){2}|%f[0-7](?:%[89ab][0-9a-f]){3}|%[0-9a-f]{2}/gi, (m) => { try { return decodeURIComponent(m); } catch { return ' '; } });
+export const decoded = (s) => s.replace(/%[0-7][0-9a-f]|%[cd][0-9a-f]%[89ab][0-9a-f]|%e[0-9a-f](?:%[89ab][0-9a-f]){2}|%f[0-7](?:%[89ab][0-9a-f]){3}|%[0-9a-f]{2}/gi, (m) => { try { return decodeURIComponent(m); } catch { return ' '; } });
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
 function isoDate() {
@@ -136,7 +167,7 @@ function isoDate() {
 // two unrelated sites under one suffix compare as the same domain, so a failed third-party resource there is
 // reported as a finding instead of a warning, and their links count as same-site. Kept simple on purpose;
 // a public-suffix list is not worth a dependency here.
-const registrable = (hostname) => hostname.split('.').slice(-2).join('.');
+export const registrable = (hostname) => hostname.split('.').slice(-2).join('.');
 
 function parseBrand(raw) {
   if (!raw || !raw.trim()) return null;
@@ -214,7 +245,7 @@ function runDir(opts) {
 // 0x7f.1 to 127.0.0.1 and IPv4-mapped IPv6 to hex groups.
 // ponytail: literal hosts only, no DNS resolution; a public name that resolves to a private address is not caught.
 // Upgrade path: resolve the name and test the address before the request.
-function isPrivateHost(hostname) {
+export function isPrivateHost(hostname) {
   const h = hostname.toLowerCase().replace(/^\[|\]$|\.$/g, '');
   if (h === 'localhost' || h.endsWith('.localhost')) return true;
   const v4 = h.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
@@ -292,8 +323,8 @@ function isThirdPartyFailedLoad(entry, ownDomains) {
 }
 
 // Lower-case, strip diacritics and fold Turkish dotless ı, so ÇIKIŞ, çıkış and cikis all compare as cikis.
-const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').toLowerCase();
-const skipUrl = (u) =>
+export const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').toLowerCase();
+export const skipUrl = (u) =>
   SKIP_LINK.test(fold(decoded(u.pathname)) + fold(decoded(u.search))) ||
   [...new URLSearchParams(u.search).keys()].some((k) => SKIP_QUERY_KEY.test(k.toLowerCase()));
 
@@ -671,4 +702,7 @@ async function main() {
   }
 }
 
-process.exitCode = await main();
+// Run only as a script, not when a test imports the helpers above. The skill is installed as a symlink: process.argv[1]
+// is the path as typed and import.meta.url the resolved one, so compare real paths.
+const isEntry = (() => { try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
+if (isEntry) process.exitCode = await main();
