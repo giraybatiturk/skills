@@ -35,8 +35,11 @@ const REFUSED_STATUSES = new Set([401, 403, 429, 503]);
 // Two-part keywords take an optional separator (- _ space). Query KEYS are tested apart: see skipUrl.
 // Languages: English, Turkish, German, French, Spanish, Italian, Portuguese, Dutch. The non-English words come from
 // general knowledge of those languages, not from measured sites; other languages are not covered. Words are written as
-// fold() leaves them (löschen is `loschen`, déconnexion is `deconnexion`). A few short words (salir, sair, esci) would skip
-// many ordinary addresses as substrings, so they match only as a whole token: no letter directly before or after.
+// fold() leaves them (löschen is `loschen`, déconnexion is `deconnexion`) and mostly as stems, so nouns and imperatives
+// match too (abmeld: abmelden, abmeldung). Two kinds of foreign word would skip common English pages as substrings, so they
+// are narrowed: stems that sit inside English words need a leading boundary (no letter directly before: /preliminary-results
+// passes, /eliminar and /account/elimina do not), and short words match only as a whole token (no letter before or after).
+// Everyday uses of those words in their own language are still skipped (/donde-salir, /baja-california).
 // ponytail: keyword heuristic, deliberately broad: safety over coverage. A site that changes state on a GET under
 // another name is not protected.
 const SEP = '[-_ ]?';
@@ -46,23 +49,28 @@ const SKIP_WORDS = [
   // Turkish
   'cikis', `oturumu?${SEP}kapat`, `sepete${SEP}ekle`,
   // German
-  'abmelden', 'ausloggen', 'loschen', 'loeschen', 'kundigen', 'kuendigen', 'stornieren', 'abbestellen', 'entfernen',
-  // French
-  'deconnex', 'deconnect', 'supprim', 'desabonn', 'desinscri',
+  'abmeld', 'ausloggen', 'losch', 'loesch', 'storn', 'abbestell', 'austragen', 'entfernen', `in${SEP}den${SEP}warenkorb`,
+  // French (resili(?!en) leaves resilience and resilient alone)
+  'deconnex', 'deconnect', 'suppr', 'desabonn', 'desinscri', 'resili(?!en)', 'effac', `fermer${SEP}(?:la${SEP})?session`, 'desactiv', `ajouter${SEP}au${SEP}panier`,
   // Spanish
-  `cerrar${SEP}sesion`, 'desconectar', 'eliminar', 'borrar', `darse${SEP}de${SEP}baja`,
+  `(?:cerrar|finalizar)${SEP}(?:la${SEP})?sesion`, 'desconect', 'desconex', 'borrar', `dar(?:se|me)?${SEP}de${SEP}baja`, 'desuscrib', `(?:agregar|anadir)${SEP}al${SEP}carrito`,
   // Italian
-  'disconnett', 'disconness', 'elimina', 'disiscri', 'rimuovi',
-  // Portuguese
-  `terminar${SEP}sessao`, `encerrar${SEP}sessao`, 'excluir', 'apagar', 'descadastrar',
+  'disconnett', 'disconness', 'disiscri', 'rimuovi', 'rimozion', 'disdett', 'disdici', 'disattiv', `aggiungi${SEP}al${SEP}carrello`,
+  // Portuguese (not the bare stem `exclu`: it would skip exclusive and exclusivo)
+  `(?:terminar|encerrar|fechar)${SEP}(?:a${SEP})?sessao`, 'deslog', 'deletar', 'excluir', 'exclusao', 'apagar', 'descadastr', 'desinscrev', `adicionar${SEP}ao${SEP}carrinho`,
   // Dutch
-  'uitloggen', 'afmelden', 'verwijderen', 'uitschrijven', 'opzeggen',
-  // Shared stem: annuler, annulla, annuleren
-  'annul',
+  'uitlog', 'afmeld', 'verwijder', 'uitschrijv', 'opzeg',
+  // Add to cart as an address, other languages (the English form is below)
+  '(?:panier|carrito|carrello|carrinho|winkelwagen|warenkorb)/(?:ajout|agreg|anad|aggiung|adicion|toevoeg|hinzu)',
 ];
-const SKIP_TOKENS = ['salir', 'sair', 'esci'];
+// Need a leading boundary. elimina covers eliminar; annul (annuler, annulla, annuleren) is not annulment or annular, anul
+// (anular) is not granular; log uit (Dutch) is not a blog address; kundig and kuendig (kündigen) are not verpleegkundige or
+// ankündigung. A glued form (/cuentaeliminar, /vertragskuendigung) is therefore not caught.
+const SKIP_BOUNDED = ['elimina', 'annul(?!ment|ar)', 'anul', `log${SEP}uit`, 'kundig', 'kuendig'];
+const SKIP_TOKENS = ['salir', 'sair', 'esci', 'baja', 'uscita'];
 const SKIP_LINK = new RegExp([
   ...SKIP_WORDS,
+  ...SKIP_BOUNDED.map((w) => `(?<![a-z])${w}`),
   `(?<![a-z])(?:${SKIP_TOKENS.join('|')})(?![a-z])`,
   '(?<![a-z0-9])(?:log|sign)/(?:out|off)',
   'cart/(?:add(?!ress)|remove|update|clear|empty)',
@@ -262,7 +270,7 @@ export function isPrivateHost(hostname) {
 }
 const isPrivateUrl = (url) => { try { return isPrivateHost(new URL(url).hostname); } catch { return false; } };
 
-const newGuard = () => ({ writes: [], blocked: [], hops: [], aborts: [], sockets: [], navBlocked: '', main: null });
+const newGuard = () => ({ writes: [], blocked: [], hops: [], aborts: [], sockets: [], navBlocked: '', writeNav: '', main: null });
 // Only the checked page's own main frame counts: a popup's navigation is just a blocked request. request.frame() throws
 // when the request has no frame yet (a navigation opened by window.open).
 const isMainNavigation = (request, guard) => { try { return request.isNavigationRequest() && request.frame() === guard.main?.mainFrame(); } catch { return false; } };
@@ -277,6 +285,7 @@ async function protectWrites(context, guard, allowPrivate) {
     const request = route.request();
     if (!READ_METHODS.has(request.method())) {
       guard.writes.push(`${request.method()} ${request.url()}`);
+      if (isMainNavigation(request, guard)) guard.writeNav = `${request.method()} ${request.url()}`;
     } else if (allowPrivate || !isPrivateUrl(request.url())) {
       return route.fallback();
     } else {
@@ -502,13 +511,19 @@ async function runCheck(opts, chromium) {
     } catch (e) {
       reason = firstLine(e.message);
     }
+    // A form the page submits on load is a write navigation of the checked page itself: the guard aborts it and the page
+    // ends on a browser error page, which is the guard's doing and not a site that does not open.
+    const wroteOnLoad = () => `the page submits a form or sends a write request as it loads (${clip(guard.writeNav, 160)}); the read-only check blocked it and cannot continue`;
     const doesNotOpen = (why) => {
-      const csv = opts.outreach ? trackRow(opts, 'report', 'does-not-open', `site does not open: ${why}`) : undefined;
+      // The tracking note must not also say the site does not open when the guard stopped the check.
+      const prefix = guard.writeNav && why === wroteOnLoad() ? 'not checked' : 'site does not open';
+      const csv = opts.outreach ? trackRow(opts, 'report', 'does-not-open', `${prefix}: ${why}`) : undefined;
       emit({ status: 'does-not-open', host: opts.host, reason: why, csv });
       return 4;
     };
     const redirectedAway = () => `the page redirected to a private or local address (${new URL(guard.navBlocked).host}); the check does not continue there`;
     if (guard.navBlocked) reason = redirectedAway();
+    else if (reason && guard.writeNav) reason = wroteOnLoad();
     if (response && !guard.navBlocked) {
       const status = response.status();
       if (REFUSED_STATUSES.has(status) || response.headers()['cf-mitigated']) {
@@ -525,7 +540,7 @@ async function runCheck(opts, chromium) {
     // A navigation the guard aborted after load (meta refresh, timer) leaves the page on a browser error page; never
     // measure or check links there.
     if (guard.navBlocked) return doesNotOpen(redirectedAway());
-    if (desktop.page.url().startsWith('chrome-error:')) return doesNotOpen('the page ended on a browser error page');
+    if (desktop.page.url().startsWith('chrome-error:')) return doesNotOpen(guard.writeNav ? wroteOnLoad() : 'the page ended on a browser error page');
     // The site's own registrable domains: the one typed and the one the home page ended on after redirects.
     const ownDomains = new Set([registrable(opts.hostname), registrable(new URL(desktop.page.url()).hostname)]);
     shots.desktop = (await desktop.page.screenshot({ type: 'jpeg', quality: 72 })).toString('base64');

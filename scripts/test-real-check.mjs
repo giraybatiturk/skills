@@ -6,8 +6,9 @@
 // inside this file. It is not part of the skill, so scripts/build-zips.sh does not ship it.
 //
 // Unit cases import the pure helpers from check.mjs. End-to-end cases spawn `node check.mjs` against the fixture servers
-// and assert the exit code, the JSON line, findings.json and the servers' request logs. They need Playwright and
-// Chromium; without them check.mjs exits 5 and these cases FAIL with install instructions (they never pass silently).
+// and assert the exit code, the JSON line, findings.json and the servers' request logs. The browser cases (all but 05, 06
+// and 12) need Playwright and Chromium; without them check.mjs exits 5 and those cases FAIL with install instructions
+// (they never pass silently).
 //
 // NOT covered here:
 //   - the private-address guard end to end: it only applies when the checked host is not local, so it needs a non-local
@@ -15,7 +16,12 @@
 //   - real sites, real bot protection (Cloudflare and similar), natural-language routing to the skill;
 //   - the roughly 2 s window that ties a console error to a blocked request (timing, not stable enough for a test);
 //   - popups, late navigations, redirect hops to private addresses, WebSockets, the Turkish report text and the
-//     other statuses (410, 500, 401, 429, 503) as links: checked by hand only.
+//     other statuses (410, 500, 401, 429, 503) as links: checked by hand only;
+//   - action words in a query string for the non-English cart forms (only the English `cart` rule has that), and the
+//     skip words themselves: they come from general knowledge, so the tables show what the rule does, not that it is
+//     complete for those languages;
+//   - HEAD and OPTIONS requests from the page (the guard lets them through), and Chromium's own background traffic
+//     (the server logs show nothing else on 127.0.0.1 and localhost, but nothing is observed at network level).
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -66,45 +72,74 @@ const MUST_SKIP = {
   'German': [
     '/abmelden', '/ausloggen', '/konto-löschen', '/konto-loeschen', '/KONTO-LÖSCHEN', '/vertrag-kündigen', '/vertrag-kuendigen',
     '/bestellung-stornieren', '/newsletter-abbestellen', '/warenkorb-entfernen',
+    '/abmeldung', '/newsletter-abmeldung', '/kuendigung', '/kündigung', '/konto-loeschung', '/stornierung', '/storno', '/abbestellung',
+    '/newsletter-austragen', '/in-den-warenkorb?id=3', '/abo/kundigen',
   ],
   'French': [
     '/déconnexion', '/deconnexion', '/se-deconnecter', '/supprimer-le-compte', '/profil/supprimer', '/se-désabonner',
     '/desabonnement', '/désinscription', '/se-desinscrire',
+    '/suppression-compte', '/resilier', '/résiliation', '/effacer', '/fermer-session', '/fermer-la-session', '/desactiver-compte',
+    '/panier/ajouter?id=1', '/ajouter-au-panier',
   ],
   'Spanish': [
     '/cerrar-sesión', '/cerrar_sesion', '/cerrarsesion', '/cerrar%20sesion', '/Cerrar-Sesion', '/desconectar', '/eliminar-cuenta',
     '/borrar-cuenta', '/darse-de-baja', '/darsedebaja', '/darse_de_baja',
+    '/anular', '/anular-pedido', '/baja', '/dar-de-baja', '/darme-de-baja', '/newsletter/baja', '/desuscribirse', '/desconexion',
+    '/cerrar-la-sesion', '/finalizar-sesion', '/eliminar', '/account/elimina', '/carrito/agregar', '/añadir-al-carrito', '/agregar-al-carrito',
   ],
-  'Italian': ['/disconnetti', '/disconnessione', '/elimina-account', '/disiscriviti', '/rimuovi'],
+  'Italian': [
+    '/disconnetti', '/disconnessione', '/elimina-account', '/disiscriviti', '/rimuovi',
+    '/disdetta', '/disdici', '/rimozione', '/disattiva-account', '/uscita', '/aggiungi-al-carrello', '/carrello/aggiungi',
+  ],
   'Portuguese': [
     '/terminar-sessão', '/terminar_sessao', '/terminarsessao', '/encerrar-sessão', '/encerrarsessao', '/excluir-conta', '/apagar-conta',
     '/descadastrar',
+    '/deslogar', '/deletar-conta', '/exclusao-de-conta', '/exclusão-de-conta', '/descadastro', '/descadastre-se', '/desinscrever',
+    '/anular', '/terminar-a-sessao', '/fechar-sessao', '/adicionar-ao-carrinho', '/carrinho/adicionar',
   ],
-  'Dutch': ['/uitloggen', '/afmelden', '/verwijderen', '/uitschrijven', '/opzeggen', '/account-opzeggen'],
-  'shared stem annul': ['/annuler', '/annulla', '/annuleren', '/commande/annuler?id=3', '/x?do=annuleren'],
+  'Dutch': [
+    '/uitloggen', '/afmelden', '/verwijderen', '/uitschrijven', '/opzeggen', '/account-opzeggen',
+    '/log-uit', '/loguit', '/verwijder', '/account/verwijder', '/afmelding', '/uitschrijving', '/opzegging', '/winkelwagen/toevoegen',
+  ],
+  'shared stem annul': ['/annuler', '/annulla', '/annuleren', '/commande/annuler?id=3', '/x?do=annuleren', '/order-annulation'],
   'short words as whole tokens': [
     '/salir', '/sair', '/esci', '/ESCI', '/Salir', '/user/esci', '/salir.php', '/conta/sair?x=1', '/x?go=sair', '/salir2',
-    '/esci-ora', '/sair_da_conta', '/p?a=1&b=salir',
+    '/esci-ora', '/sair_da_conta', '/p?a=1&b=salir', '/baja?x=1', '/uscita-ora',
   ],
 };
 
 const MUST_KEEP = {
   'ordinary pages': ['/', '/about', '/pricing', '/contact?lang=en', '/blog/post-1?page=2', '/products/shoes'],
   'log/out only at the start of a word': ['/blog/outdoor', '/catalog/output', '/blog/outlook'],
-  'cart addresses': ['/cart', '/cart/address', '/cart/addresses', '/cart?address=home'],
+  'cart addresses': ['/cart', '/cart/address', '/cart/addresses', '/cart?address=home', '/warenkorb', '/panier', '/carrito', '/carrello', '/carrinho', '/winkelwagen'],
   'token text that is not a query key': ['/tokens-info', '/token/abc', '/a%3Ftoken=1', '/p?next=%2Fpage%3Ftoken%3Dx', '/x?tokens=1', '/x?confirmation=1', '/confirm'],
-  'short words inside a longer word': ['/pesci', '/fresci', '/ensaio', '/sairon'],
+  'short words inside a longer word': ['/pesci', '/fresci', '/ensaio', '/sairon', '/bajar-app', '/embajada'],
+  'kundig inside ordinary Dutch and German words': [
+    '/verpleegkundige', '/onze-deskundigheid', '/bouwkundig-advies', '/ankündigung', '/ankuendigungen', '/fachkundige-beratung',
+  ],
+  // Documented misses: a stem with a leading boundary does not match when glued to a letter, and only English has cart actions
+  // other than add. If one of these becomes skipped that is an improvement: move it to MUST_SKIP and update SKILL.md.
+  'documented misses: glued foreign forms and other cart actions': [
+    '/doEliminar.do', '/cuentaeliminar', '/userAnnuler', '/commandeannuler', '/vertragskuendigung', '/panier/vider', '/warenkorb/leeren',
+  ],
+  'English words that contain a foreign stem': [
+    '/preliminary-results', '/preliminary-program', '/annulment', '/annular-cutters', '/cannula', '/granular', '/resilience-planning',
+    '/resilient-design', '/exclusive-offers', '/exclusivo', '/blog-uitgelicht',
+  ],
   'ordinary pages in other languages': [
     '/uber-uns', '/kontakt', '/produkte', '/preise', '/impressum', '/nous-contacter', '/a-propos', '/contacto', '/acerca-de',
     '/chi-siamo', '/sobre-nos', '/over-ons', '/annual-report',
   ],
 };
 
-// Substring matching skips ordinary pages that contain a keyword. This is documented (SKILL.md Boundaries); asserting it
-// means a change of behaviour is noticed instead of slipping through.
+// Keyword matching skips ordinary pages that contain a keyword, also in the other languages (everyday uses of a skip word,
+// a stem at the start of an English word). This is documented (SKILL.md Boundaries); asserting it means a change of
+// behaviour is noticed instead of slipping through.
 const DOCUMENTED_FALSE_SKIPS = [
   '/cancellation-policy', '/blogoffers', '/blog-outreach', '/design-outlet', '/yeni-cikislar', '/blog/how-to-remove-404', '/deleted',
-  '/unsubscribed', '/eliminate-waste',
+  '/unsubscribed', '/eliminate-waste', '/elimination-diet', '/suppressor', '/tattoo-entfernen', '/kfz-abmelden', '/asbest-verwijderen',
+  '/donde-salir', '/onde-sair-em-lisboa', '/conditions-d-annulation', '/baja-california', '/feuerlöscher', '/stornobedingungen',
+  '/planta-baja', '/data-di-uscita', '/rimozione-amianto', '/noise-suppression',
 ];
 
 const PRIVATE_HOSTS = [
@@ -174,7 +209,7 @@ describe('unit: helpers', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 const logs = { site: [], third: [] };
-const ports = { site: 0, third: 0 };
+const ports = { site: 0, third: 0, dead: 0 };
 const servers = [];
 const tmpDirs = [];
 
@@ -212,17 +247,25 @@ const PAGES = {
 <form id="f" method="post" action="/c08/form" target="sink"><input name="a" value="1"></form>
 <script>
 fetch('/c08/api', { method: 'POST', body: 'x' }).catch(() => {});
+for (const method of ['PUT', 'DELETE', 'PATCH']) fetch('/c08/api', { method, body: 'x' }).catch(() => {});
 fetch('http://localhost:${ports.third}/c08/cross', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }).catch(() => {});
 navigator.sendBeacon('/c08/beacon', 'x');
 document.getElementById('f').submit();
 </script>`),
   // The same form submitted in the page's own frame: the guard aborts the navigation and the page ends on a browser error page.
   '/c08b/': () => page('<p>top-level form</p><form id="f" method="post" action="/c08b/form"><input name="a" value="1"></form><script>document.getElementById("f").submit()</script>'),
+  // A blocked write, then a navigation that fails for another reason (nothing listens on the port): not a write-on-load stop.
+  '/c08c/': () => page(`<p>blocked write, then a dead address</p><script>
+fetch('/c08c/api', { method: 'POST', body: 'x' }).catch(() => {});
+setTimeout(() => { location.href = 'http://127.0.0.1:${ports.dead}/'; }, 500);
+</script>`),
   '/c09/': () => page(`<p>third party</p><img src="${thirdUrl('/c09/missing.png')}" width="10" height="10"><a href="/c09/ok">ok</a>`),
   '/c10/': () => page(anchors(C10_LINKS)),
   '/c11/': () => page('<p>hello</p><a href="/c11/ok">ok</a>'),
+  // A link to the other host, a same-site link that redirects to the other host, and one address four times.
+  '/c13/': () => page(anchors([thirdUrl('/c13/offsite'), '/c13/hop', '/c13/dup', '/c13/dup', '/c13/dup#a', '/c13/dup#b', '/c13/ok'])),
 };
-const REDIRECTS = { [C07_REDIRECT]: '/c07/s/logout?via=redirect' };
+const REDIRECTS = { [C07_REDIRECT]: () => '/c07/s/logout?via=redirect', '/c13/hop': () => thirdUrl('/c13/landed') };
 
 function siteHandler(req, res) {
   logs.site.push({ method: req.method, path: req.url });
@@ -231,7 +274,7 @@ function siteHandler(req, res) {
   if (req.method !== 'GET') return send(res, 204, 'text/plain', ''); // never expected; the log lets the test notice
   if (pathname === '/c04/') return send(res, 403, 'text/html', page('<p>blocked</p>'));
   if (PAGES[pathname]) return send(res, 200, 'text/html; charset=utf-8', PAGES[pathname]());
-  if (REDIRECTS[pathname]) return send(res, 302, 'text/plain', '', { location: REDIRECTS[pathname] });
+  if (REDIRECTS[pathname]) return send(res, 302, 'text/plain', '', { location: REDIRECTS[pathname]() });
   if (pathname.includes('missing')) return send(res, 404, 'text/html', page('<p>not found</p>'));
   return send(res, 200, 'text/html; charset=utf-8', page('<p>ok</p>'));
 }
@@ -260,6 +303,7 @@ const freePort = () => new Promise((resolve, reject) => {
 before(async () => {
   ports.site = await listen(siteHandler);
   ports.third = await listen(thirdHandler);
+  ports.dead = await freePort();
 });
 
 after(() => {
@@ -326,6 +370,7 @@ describe('end to end', { concurrency: 4 }, () => {
     expectExit(r, 4);
     assert.equal(r.json.status, 'does-not-open');
     assert.ok(r.json.reason.length > 0);
+    assert.doesNotMatch(r.json.reason, /submits a form or sends a write request/, 'an unreachable address is not a write-on-load stop');
   });
 
   it('04 home page answers 403: exit 6', { timeout: 150_000 }, async () => {
@@ -372,17 +417,32 @@ describe('end to end', { concurrency: 4 }, () => {
     for (const p of [...C07_ORDINARY, C07_REDIRECT]) assert.ok(requested.has(p), `${p} should be requested`);
   });
 
-  it('08 write guard: fetch POST, cross-origin POST, sendBeacon and form POSTs never reach a server', { timeout: 150_000 }, async () => {
-    const [r, top] = await Promise.all([run([siteUrl('/c08/'), '--out', tmp()]), run([siteUrl('/c08b/'), '--out', tmp()])]);
+  it('08 write guard: POST, PUT, DELETE, PATCH, cross-origin POST, sendBeacon and form POSTs never reach a server', { timeout: 150_000 }, async () => {
+    const [r, top, other] = await Promise.all([
+      run([siteUrl('/c08/'), '--out', tmp()]),
+      run([siteUrl('/c08b/'), '--outreach', '--out', tmp()]),
+      run([siteUrl('/c08c/'), '--outreach', '--out', tmp()]),
+    ]);
     const writes = [...hits('/c08', logs.site), ...hits('/c08', logs.third)].filter((q) => q.method !== 'GET');
     assert.deepEqual(writes, [], 'the read-only guard let a write reach a server');
-    expectExit(top, 4); // documented: a page that ends on a browser error page stops the check
-    assert.match(top.json.reason, /browser error page/);
+    // A form submitted in the page's own frame: the guard's abort leaves the page on a browser error page. The run stops
+    // (exit 4) but says that the guard did it, not that the site does not open.
+    expectExit(top, 4);
+    assert.equal(top.json.status, 'does-not-open');
+    assert.match(top.json.reason, /^the page submits a form or sends a write request as it loads \(POST http:\/\/127\.0\.0\.1:\d+\/c08b\/form\); the read-only check blocked it and cannot continue$/);
+    const note = csvRows(top.json.csv)[1].slice(7).join(',');
+    assert.equal(csvRows(top.json.csv)[1][3], 'does-not-open');
+    assert.match(note, /^not checked: the page submits a form or sends a write request as it loads/);
+    assert.ok(!note.includes('site does not open'), 'the tracking note does not also say the site does not open');
+    // A blocked fetch POST on a page that then ends on a browser error page for another reason keeps the plain reason and note.
+    expectExit(other, 4);
+    assert.equal(other.json.reason, 'the page ended on a browser error page');
+    assert.equal(csvRows(other.json.csv)[1].slice(7).join(','), 'site does not open: the page ended on a browser error page');
     expectExit(r, 3);
     assert.deepEqual(r.json.findings, [], 'errors caused by blocked writes are not findings');
     const warning = r.json.warnings.find((w) => /write request\(s\) were blocked by the read-only guard/.test(w));
     assert.ok(warning, `the page did fire writes and the guard said so; warnings: ${JSON.stringify(r.json.warnings)}`);
-    assert.match(warning, /^4 write request\(s\)/);
+    assert.match(warning, /^7 write request\(s\)/); // POST, PUT, DELETE, PATCH, cross-origin POST, sendBeacon, form
   });
 
   it('09 third-party image answering 404 is a warning, not a finding', { timeout: 150_000 }, async () => {
@@ -436,6 +496,15 @@ describe('end to end', { concurrency: 4 }, () => {
     assert.equal(r.stdout.trim(), 'imported');
     assert.equal(existsSync(out), false, 'importing wrote nothing');
     assert.equal(hits('/c12/').length, 0);
+  });
+
+  it('13 same-site scope and de-duplication: other hosts are not requested, a link repeated or with fragments is requested once', { timeout: 150_000 }, async () => {
+    const r = await run([siteUrl('/c13/'), '--out', tmp()]);
+    expectExit(r, 3);
+    assert.deepEqual(hits('/c13/', logs.third), [], 'neither the third-party link nor the redirect target was requested');
+    for (const p of ['/c13/hop', '/c13/dup', '/c13/ok']) assert.equal(hits(p).length, 1, `${p} is requested once`);
+    const { links } = readJson(r.json.json);
+    assert.deepEqual([links.checked, links.found], [3, 3]);
   });
 });
 
