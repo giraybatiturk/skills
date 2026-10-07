@@ -1,10 +1,10 @@
 ---
 name: real-audit
-description: Audit existing code, modules, screens or products. Use for review, denetle, audit, missing behavior, UX quality, readiness or performance checks. Report evidence-backed defects without designing their remedy; apply fixes only when separately authorized. Covers produced visual deliverables (catalogue, deck, poster, artboard) in Deliverable mode. For a quick automated scan of any public URL (yours or someone else's), use real-check. (v0.11.0)
+description: Audit existing code, modules, screens or products. Use for review, denetle, audit, missing behavior, UX quality, readiness or performance checks. Report evidence-backed defects without designing their remedy; apply fixes only when separately authorized. Covers produced visual deliverables (catalogue, deck, poster, artboard) in Deliverable mode. For a quick automated scan of any public URL (yours or someone else's), use real-check; for persistent Playwright tests of the product's user flows, use real-test. (v0.12.0)
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.11.0
+  version: 0.12.0
   source: https://github.com/giraybatiturk/skills
 ---
 

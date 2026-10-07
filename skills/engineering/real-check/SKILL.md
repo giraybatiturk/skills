@@ -1,10 +1,10 @@
 ---
 name: real-check
-description: "Quick automated check of a public URL: site kontrol, siteyi tara, URL check, broken links, console errors, mobile overflow, prospect, client or competitor site report. Rule-based and read-only, typically about 30 seconds, no code or account access; writes a one-page owner-facing report (HTML + PDF) and, on request, an outreach message draft and a tracking row. Never sends anything. For an in-depth review of your own product use real-audit. (v0.11.0)"
+description: "Quick automated check of a public URL: site kontrol, siteyi tara, URL check, broken links, console errors, mobile overflow, prospect, client or competitor site report. Rule-based and read-only, typically about 30 seconds, no code or account access; writes a one-page owner-facing report (HTML + PDF) and, on request, an outreach message draft and a tracking row. Never sends anything. For an in-depth review of your own product use real-audit; for persistent Playwright tests of your own app's user flows use real-test. (v0.12.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.11.0
+  version: 0.12.0
   source: https://github.com/giraybatiturk/skills
 ---
 
