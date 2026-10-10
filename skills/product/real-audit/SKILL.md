@@ -81,7 +81,7 @@ When the target is a running production system with real users and data, read `r
 
 When the selected scope includes the product's public web surface (Product, Design, Performance or whole-product), run `real-check` on its public URL after scope is chosen, as automated first evidence and without outreach flags. Resolve it from the client's skill catalog, or the adjacent `../real-check` directory (repository layout: `../../engineering/real-check`). Pass `--out` as the audit report's folder or a temporary directory outside the audited workspace, so the audit leaves nothing in the product. On a live site the run adds two page views and requests up to 50 links, each following up to 5 same-site redirects, to its analytics; state that in the report. Cite its `findings.json` and, when a report was written (exit 3 has none), the screenshots embedded in its HTML report as evidence; its findings remain subject to this audit's applicability rules and priority judgment, and a clean `real-check` result is not coverage. If `real-check` is unavailable or cannot install its browser, state that and continue.
 
-Keep a bounded audit single-agent. For critical, external, sensitive, cross-repository, or explicitly orchestrated work, read `references/orchestration.md`.
+Keep a bounded audit single-agent. For critical, external, sensitive, cross-repository, or explicitly orchestrated work, read `references/orchestration.md`. When the subject is a code change (a branch, diff or uncommitted tree), follow the change verification loop in that file: adversarial verifier, second model family for externally visible or 10+ file changes, then build, tests and mobile-first measurement by the orchestrator, then fix and re-verify.
 
 ## Shared report format
 
