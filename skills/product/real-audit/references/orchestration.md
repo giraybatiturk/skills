@@ -31,3 +31,14 @@ Choose models by capability, not a pinned version:
 | Mechanical edits and discovery | fastest capable model |
 
 On Codex, this usually maps to Astra for architecture/verification, Sol for broad implementation, Terra for UI/product work, and Luna or Spark for mechanical discovery. On Claude-compatible systems, prefer the highest product/architecture tier available (including Fable when offered), Opus for verification, Sonnet for implementation, and Haiku for discovery. Fall back by capability if a named family is unavailable.
+
+## Change verification loop
+
+When the audited subject is a code change (a branch, a diff or an uncommitted tree) rather than a running product, verify it in this fixed order and record each step's result. Skipping a step is a reported gap, not a silent omission.
+
+1. **Adversarial verifier** (strongest reasoning model; on Claude-compatible systems the `ver1f1er` agent, Opus). Give it the change, the binding rules (`CLAUDE.md`, `DESIGN.md`, this skill's `design-rules.md`) and the primary sources behind every claim the change makes (product code, API contracts, copy sources). Its job is to refute: every stated fact traced to a source, every translation checked against the original and the file's existing terms, every grid or layout counted, every stale comment flagged. It must label each item verified / refuted / could not verify.
+2. **Second model family** when the change is externally visible or touches more than 10 files (orchestration trigger 1 or 3): an independent reviewer from a different model family (on Claude-compatible systems the `c0dex` agent running `codex exec review`). It runs in addition to step 1, never instead of it. "No actionable regressions" from a second family is confirmation of step 1's coverage, not of the change's product correctness.
+3. **Build, tests and measurement** by the orchestrator, not by a worker's claim: type check, lint, unit tests, a production build for every deployment variant, and for interface changes the mobile-first measurement in `design-rules.md` (375 px, then desktop; overflow, horizontal scroll, touch targets, wrapped headings, section height) in every shipped language.
+4. **Fix and re-verify.** Findings go to a mechanical editor with exact replacement text; then steps 1 and 3 run again on the result. A fix round without a re-verification is unverified.
+
+Measured on 10 October 2026 across four production landing sites: the adversarial verifier found 22 defects over two rounds (a product-contradicting feature claim, three translation term drifts, a missing visual-regression record) that the second family's review reported as clean. The two reviews are complementary, not interchangeable.
