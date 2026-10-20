@@ -2,6 +2,25 @@
 
 Seven connected workflows for deciding what to build, proving what exists, and improving products with evidence.
 
+## How they fit together
+
+```mermaid
+flowchart LR
+  S["real-start<br/>where do I begin?"] --> B["real-brainstorm<br/>idea still open"]
+  S --> P["real-plan<br/>idea chosen"]
+  B --> P
+  R["real-research<br/>primary sources"] -.-> B
+  R -.-> P
+  P --> K["build"]
+  K --> T["real-test<br/>flow tests"]
+  K --> A["real-audit<br/>in-depth review"]
+  T -.-> A
+  A -.-> T
+  C["real-check<br/>any public URL"] -.-> T
+```
+
+Solid arrows are the usual path; dashed arrows are optional handoffs. Every workflow also works on its own: start with `real-brainstorm` when the idea is open, with `real-plan` when it is chosen, or let `real-start` pick. Reports land in `docs/brainstorm/`, `docs/plans/`, `docs/audits/`, `docs/research/`, `real-test-reports/` and the `real-check` output folder.
+
 ## The seven workflows
 
 | Skill | Use it for |
