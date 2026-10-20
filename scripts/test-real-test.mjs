@@ -307,6 +307,15 @@ describe('guard.mjs rules', () => {
       "await page.locator('form').dispatchEvent('submit');",
     ],
     'foreign-code': ["const fs = require('fs');", "const m = await import('./x.js');", "import { x } from 'lodash';", "import 'dotenv/config';", "eval('1 + 1');", "import fs from 'node:fs';"],
+    'node-escape': [
+      "const cp = process.getBuiltinModule('node:child_process');",
+      "const fs = globalThis.process.getBuiltinModule('fs');",
+      "const m = module.require('fs');",
+      "process.exit(1);",
+      "const p = process; p.kill(1);",
+      "const f = new Function('return 1');",
+      "const f = Function('return 1');",
+    ],
     'page-scripting': ["await page.addInitScript(() => { localStorage.setItem('sid', 'abc'); });", "await page.addScriptTag({ content: 'x' });"],
     'session-injection': [
       "await context.addCookies([{ name: 'sid', value: '1', url: 'https://x.test' }]);",
@@ -381,8 +390,8 @@ describe('guard.mjs rules', () => {
     'real-email': [
       "await page.getByLabel('Email').fill('jane.doe@gmail.com');",
       "await page.getByLabel('Email').type('someone@company.io');",
-      "await page.fill('#email', 'giray@gmail.com');",
-      "const email = 'giray@gmail.com';",
+      "await page.fill('#email', 'jane.doe@gmail.com');",
+      "const email = 'jane.doe@gmail.com';",
     ],
   };
 
@@ -405,6 +414,14 @@ describe('guard.mjs rules', () => {
     assert.ok(!fires("import { login } from './helpers';", ctx).has('foreign-code'));
     assert.ok(!fires("import { login } from '../real-test/helpers';", ctx).has('foreign-code'));
     assert.ok(fires("import { evil } from '../elsewhere/evil';").has('foreign-code'), 'without a folder, any parent import counts as outside');
+  });
+
+  it('review: node-escape stops a spec that reaches Node without require, and lets the word "process" through in strings and process.env', () => {
+    const escape = wrap("    const cp = process.getBuiltinModule('node:child_process');\n    cp.execSync('id');\n    await expect(page).toHaveURL(/x/);");
+    assert.deepEqual(scan(escape).map((h) => h.rule), ['node-escape'], 'child_process sits in a string, so only node-escape can see it');
+    const words = wrap("    await page.getByText('Process payment').click();\n    await expect(page.getByText('process')).toBeVisible();");
+    assert.deepEqual(scan(words), []);
+    assert.deepEqual(scan(CLEAN), [], 'process.env.X stays allowed');
   });
 
   it('rejects a test without any assertion, also one whose only expect( sits in a string', () => {
@@ -459,6 +476,8 @@ describe('guard.mjs rules', () => {
       "const rows = page.getByRole('row');\n    const n = await rows.count();\n    expect(n).toBeGreaterThan(0);",
       "const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('link', { name: 'Docs' }).click()]);\n    await expect(popup).toHaveURL(/docs/);",
       "test.fixme(isMobile, 'The phone layout hides the toggle; the plan expects it visible.');",
+      "await page.getByRole('button', { name: 'Process payment' }).click();",
+      "await expect(page.getByText('globalThis and Function(x) are only words here')).toBeVisible();",
     ]) {
       const hits = scan(wrap(`    ${sample}\n${OK_LINE}`));
       assert.deepEqual(hits.map((h) => `${h.rule}:${h.line}`), [], `should pass: ${sample}`);
@@ -534,7 +553,7 @@ describe('guard.mjs rules', () => {
 
   it('review: data files (json, csv, .env) are scanned for secrets, real emails and card numbers (R4)', () => {
     const rules = (text) => scanData(text).map((f) => f.rule).sort();
-    assert.deepEqual(rules('{\n  "password": "hunter2hunter2",\n  "email": "giray@gmail.com"\n}\n'), ['real-email', 'secret-literal']);
+    assert.deepEqual(rules('{\n  "password": "hunter2hunter2",\n  "email": "jane.doe@gmail.com"\n}\n'), ['real-email', 'secret-literal']);
     assert.deepEqual(rules('name,password\nA,hunter2hunter2\n'), ['secret-literal']);
     assert.deepEqual(rules('API_TOKEN=abcdefgh12345\n'), ['secret-literal']);
     assert.deepEqual(rules('user,card\nTest User,4532 0151 1283 0366\n'), ['real-card']);
@@ -873,7 +892,7 @@ describe('guard.mjs command line', () => {
     const { dir, done } = temp();
     try {
       writeFileSync(path.join(dir, 'login.spec.ts'), wrap("    await page.getByLabel('Email').fill(users.email);\n    await page.getByLabel('Label').fill(users.password);\n    await expect(page).toHaveURL(/x/);").replace("import { test, expect } from '@playwright/test';", "import { test, expect } from '@playwright/test';\nimport users from './users.json';"));
-      writeFileSync(path.join(dir, 'users.json'), '{"password":"hunter2hunter2","email":"giray@gmail.com"}');
+      writeFileSync(path.join(dir, 'users.json'), '{"password":"hunter2hunter2","email":"jane.doe@gmail.com"}');
       writeFileSync(path.join(dir, 'clean.json'), '{"name":"Test User","email":"test.user@example.com"}');
       writeFileSync(path.join(dir, 'seed.spec.ts'), SEED);
       const result = run(dir);

@@ -25,8 +25,9 @@
 // are never printed, so a secret in a test never reaches the model. Exit 0: nothing rejected or restored. Exit 1: at least
 // one file was rejected or restored. Exit 2: usage error.
 //
-// This is a heuristic pattern check, not a parser: it catches the usual ways a generated test hides a failure, bypasses
-// the safety rules or carries a secret. It does not prove a test is good.
+// This is a heuristic pattern check, not a parser and not a sandbox: it catches the usual ways a generated test hides a
+// failure, bypasses the safety rules, reaches Node or carries a secret. It does not prove a test is good, and code that
+// avoids its patterns passes.
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -90,6 +91,7 @@ export const RULE_INFO = {
   'in-page-network': ['reject', 'sends requests from page code'],
   'form-submit': ['reject', 'submits a form from script'],
   'foreign-code': ['reject', 'loads or runs code other than @playwright/test and files in the tests folder'],
+  'node-escape': ['reject', 'reaches Node itself (process other than process.env, globalThis, getBuiltinModule, module.require, Function()) instead of driving the page'],
   'page-scripting': ['reject', 'injects scripts into the page'],
   'session-injection': ['reject', 'injects, copies or overrides a session or credentials by hand (the session comes from storageState)'],
   'absolute-url': ['reject', 'hard-codes an absolute URL in goto (use a path relative to baseURL)'],
@@ -140,6 +142,7 @@ const RULES = [
   simple('form-submit', 'code', /\.(?:submit|requestSubmit)\s*\(/g),
   simple('form-submit', 'text', /\.dispatchEvent\s*\(\s*['"]submit['"]/g),
   simple('foreign-code', 'code', /\brequire\s*\(|\bimport\s*\(|(?<![\w$.])eval\s*\(|\bnew\s+Function\s*\(|child_process|\bimport\s+['"]/g),
+  simple('node-escape', 'code', /(?<![\w$])process\b(?!\s*\.\s*env\b)|\bglobalThis\b|\bgetBuiltinModule\b|\bmodule\s*\.\s*require\b|(?<![\w$])Function\s*\(/g),
   simple('page-scripting', 'code', /\.(?:addInitScript|addScriptTag|exposeFunction|exposeBinding)\s*\(/g),
   simple('session-injection', 'code', /\.addCookies\s*\(|\.setExtraHTTPHeaders\s*\(|\bdocument\s*\.\s*cookie\s*=|\.storageState\s*\(/g),
   simple('session-injection', 'text', /\b(?:local|session)Storage\.setItem\s*\(\s*['"][^'"]*(?:token|auth|session|jwt|sid)|\buse\s*\(\s*\{[^}]*\b(?:storageState|extraHTTPHeaders|httpCredentials|baseURL)\b/gi),
