@@ -30,7 +30,9 @@ When the platform or delivery mechanism is unresolved, keep dependent API, acces
 4. Include measurable acceptance criteria and label anything unavailable as **Could not measure**, with who or what can verify it.
 5. Wait for approval of the five headings before editing implementation files. Existing session approval remains valid when the scope has not changed.
 
-Optional handoff: when the approved plan has acceptance criteria for a web app flow, offer to save them as a flows file, one flow per line in plain text, no bullets or numbering (for example `specs/<feature>-flows.txt`). Only if `real-test` is in the client's skill catalog, add one line at the end: "Next, optional: after implementation, `/real-test <url> --flows <file>`." Skip silently if it is not installed; never invoke it.
+After approval, when writing is permitted, save the five headings and acceptance criteria to `docs/plans/YYYY-MM-DD-<slug>.md` in the current project unless the user names another place, and link it in chat; otherwise stay chat-only.
+
+Optional handoff: when the approved plan has acceptance criteria for a web app flow, offer to save them as a flows file next to the plan, `docs/plans/YYYY-MM-DD-<slug>-flows.txt`, one flow per line in plain text, no bullets or numbering. Only if `real-test` is in the client's skill catalog, add one line at the end: "Next, optional: after implementation, `/real-test <url> --flows <file>`." Skip silently if it is not installed; never invoke it.
 
 This workflow requires real-audit from the same bundle. Resolve its installed location from the client's skill catalog, or use the adjacent `../real-audit` directory if present. If unavailable, report the missing dependency and request installation of the full Real bundle; do not invent its rules or continue dependent work.
 

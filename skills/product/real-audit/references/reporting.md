@@ -12,7 +12,7 @@ If the user separately asks for remedies, deliver them as a clearly labelled sec
 
 ## Layered delivery
 
-Keep full in-scope findings and evidence in one local report when permitted. Chat leads with the conclusion, the most important impacts (up to five visible items) and a report link. If chat-only, compress the sections without dropping material findings or evidence boundaries. Do not repeat coverage, findings and next actions as multiple closing lists. End with one next action if needed. Never omit critical findings for brevity or prescribe work the agent can already complete.
+Keep full in-scope findings and evidence in one local report when permitted, at `docs/audits/YYYY-MM-DD-<slug>.md` in the current project unless the user names another place. Chat leads with the conclusion, the most important impacts (up to five visible items) and a report link. If chat-only, compress the sections without dropping material findings or evidence boundaries. Do not repeat coverage, findings and next actions as multiple closing lists. End with one next action if needed. Never omit critical findings for brevity or prescribe work the agent can already complete.
 
 ## Priority and evidence are separate
 
