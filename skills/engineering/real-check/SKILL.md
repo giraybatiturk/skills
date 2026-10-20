@@ -60,6 +60,7 @@ Not an audit. `real-check` is a rule-based scan of a public URL with no code or 
    Done when `<slug>-message.md` exists, both drafts meet their limits and every finding sentence maps to a `title`.
 
 5. **Preview and hand over.** With a report (exit 0, not `--control`): serve the run folder on a free, OS-assigned port bound to `127.0.0.1` (for example `python3 -m http.server 0 --bind 127.0.0.1` in the background), check with `curl` that the served `<title>` is the report's, and say how to stop the server. Give clickable links: the HTML report from the preview server, and the PDF, the message and `outreach.csv` as absolute `file://` URLs. With `--control` there is no report: skip the preview and link the message and CSV only. Report each finding on one line, then any warnings. The CSV row has `status=draft`; the user updates it after sending.
+   When the checked site is the user's own (never a client, prospect or competitor site) and findings were reported, and `real-test` is in the client's skill catalog, add one line: "Next, optional: `real-test` can keep persistent tests of your app's user flows." Skip silently otherwise.
 
    Done when every link opens and the findings and warnings are listed.
 

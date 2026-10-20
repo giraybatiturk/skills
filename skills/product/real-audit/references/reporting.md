@@ -101,3 +101,7 @@ Give participants a realistic outcome such as "Schedule an appointment for next 
 Save tasks in the same local audit report or the project's existing research-task location, linked by stable IDs. A proposal is not a completed study. Use workflow status Proposed / In progress / Completed / Deferred separately from the conclusion.
 
 When results return, review the actual notes/data and sample conditions before updating the linked finding: **Supported / Contradicted / Inconclusive**, qualified to the inspected sample and conditions. Preserve the earlier hypothesis and add a dated evidence/result entry rather than silently rewriting history. Revisit priority only when the evidence warrants it; do not generalize a small sample to all users. Update coverage statuses only for criteria the new evidence actually addresses. Findings that remain uncertain stay unverified, and completed homework alone never establishes release readiness. Carry selected results into planning when requested; do not auto-edit product/design policy or implementation.
+
+## Optional handoff
+
+When a confirmed defect is in a web user flow and `real-test` is in the client's skill catalog, end the report with one line: "Next, optional: once fixed, `real-test` can keep a regression test for this flow." Skip silently if it is not installed; never invoke it or ask the user to install it.

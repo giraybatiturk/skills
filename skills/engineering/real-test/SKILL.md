@@ -129,6 +129,7 @@ Not the other two. `real-check` scans any public URL with fixed rules, no AI, ab
    - Rerun, with no model: `npx playwright test --project=real-test-desktop --project=real-test-mobile` plus a `--project=real-test-<browser>` for each browser in `projects` (plain `npx playwright test` when this skill wrote the config and it holds only these projects); `BASE_URL=<other URL>` points the same tests at another environment. Say that reruns hit whatever `BASE_URL` is, and that with `--allow-writes` the `@writes` tests run only against the origin they were made for.
 
    Chat: the counts, the `report.md` path, the HTML report path, the `visual.html` path with how many screens changed, and the rerun command. Never write "the app works".
+   If there are accessibility violations or `changed` screens and `real-audit` is in the client's skill catalog, add one line to the chat: "Next, optional: `real-audit` for an in-depth review." Skip silently if it is not installed; never invoke it.
 
    Done when `report.md` and `visual.html` exist, the sum of `flowTotals` equals the number of scenarios in the approved plan, and every flow that is not `passed` has steps and evidence or says there is none.
 

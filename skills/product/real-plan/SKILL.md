@@ -30,6 +30,8 @@ When the platform or delivery mechanism is unresolved, keep dependent API, acces
 4. Include measurable acceptance criteria and label anything unavailable as **Could not measure**, with who or what can verify it.
 5. Wait for approval of the five headings before editing implementation files. Existing session approval remains valid when the scope has not changed.
 
+Optional handoff: when the approved plan has acceptance criteria for a web app flow, offer to save them as a flows file, one flow per line in plain text, no bullets or numbering (for example `specs/<feature>-flows.txt`). Only if `real-test` is in the client's skill catalog, add one line at the end: "Next, optional: after implementation, `/real-test <url> --flows <file>`." Skip silently if it is not installed; never invoke it.
+
 This workflow requires real-audit from the same bundle. Resolve its installed location from the client's skill catalog, or use the adjacent `../real-audit` directory if present. If unavailable, report the missing dependency and request installation of the full Real bundle; do not invent its rules or continue dependent work.
 
 Read the resolved real-audit `references/product-context.md` for shared context persistence. Reuse the canonical project `PRODUCT.md` and prior answers; save confirmed durable product facts there during discovery, before handoff to design/implementation. Respect explicit read-only limits. Context documentation is not implementation approval. Keep candidate stories and proposed changes in planning documents, and link approved story records instead of copying them into PRODUCT.md. Do not create or modify DESIGN.md during product intake; a separate applicable design-policy authorization is required.
