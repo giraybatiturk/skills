@@ -18,8 +18,8 @@ done
 for file in check.mjs package.json; do
   require_file "$repo/skills/engineering/real-check/scripts/$file"
 done
-for file in guard.mjs summary.mjs; do
-  require_file "$repo/skills/engineering/real-test/scripts/$file"
+for file in scripts/guard.mjs scripts/summary.mjs scripts/visual.mjs assets/fixtures.ts; do
+  require_file "$repo/skills/engineering/real-test/$file"
 done
 for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context deliverable live-audit; do
   require_file "$repo/skills/product/real-audit/references/$ref.md"

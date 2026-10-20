@@ -4,17 +4,20 @@
 //
 //   node summary.mjs <results.json> [--first <first-run.json>] [--plan <specs/real-test-plan.md>] [--guard <guard.json>]...
 //
-// stdout: one JSON object {totals, flowTotals, flows, tests, blocked, extra, guard, runErrors}. Statuses: passed, failed,
-// fixme, skipped, flaky, and for flows also blocked.
+// stdout: one JSON object {totals, flowTotals, projects, flows, tests, blocked, extra, guard, runErrors}. Statuses: passed,
+// failed, fixme, skipped, flaky, and for flows also blocked.
 //   totals      counts of runs (one flow in one project), seed.spec.* excluded
+//   projects    the project names that ran, in report order (real-test-desktop, real-test-mobile, real-test-firefox ...): one
+//               column each in the report's table; `flows[].projects` maps each of them to its status
 //   flowTotals  counts of flows by status (a flow is a spec file); this is what the report's table and counts use
 //   flows       one row per spec file: its status over all projects (failed > flaky > fixme > skipped > passed) and per project
 //   tests       one row per test and project: reason (the test.fixme text), first error line, screenshot and trace paths
 //   blocked     with --plan: every planned test file that has no run, with the reason (no test file, rejected by the guard,
 //               not run); these flows are `blocked` in flows and flowTotals
 //   extra       with --plan: flows that ran but are not in the plan (older specs in the folder); not counted above
-//   guard       with --guard (guard.mjs --json files, repeatable): all findings, and `targetChanges`, the ones where an
-//               assertion now looks at different locator text after the heal; the report lists them
+//   guard       with --guard (guard.mjs --json files, repeatable): all findings, `targetChanges`, the ones where an
+//               assertion now looks at different locator text after the heal, and `noFixtures`, the specs that do not import
+//               ./real-test.fixtures (no observations or screenshots for them); the report lists both
 //   runErrors   errors Playwright reported outside any test (a config or load error); a run with errors is not a green run
 // A test marked test.fail() is never `passed` (it is reported `failed` with that as the reason), so it is never `healed`.
 // With --first, the report of the run before the heal: every row also gets `first` ({status, error, screenshots, traces}
@@ -63,7 +66,8 @@ export function rows(report) {
           status: status(test),
           reason: expectedFail ? 'marked test.fail(): an expected failure is not a pass' : (test.annotations.find((a) => a.type === 'fixme')?.description ?? ''),
           error: (last?.errors?.[0]?.message ?? last?.error?.message ?? '').replace(ANSI, '').split('\n').find((line) => line.trim()) ?? '',
-          screenshots: attachments.filter((a) => a.contentType?.startsWith('image/')).map((a) => relative(a.path)),
+          // The fixtures' real-test-screen is evidence for the visual report, not a failure screenshot.
+          screenshots: attachments.filter((a) => a.contentType?.startsWith('image/') && !a.name?.startsWith('real-test-')).map((a) => relative(a.path)),
           traces: attachments.filter((a) => a.name === 'trace').map((a) => relative(a.path)),
         });
       }
@@ -141,11 +145,12 @@ export function summarize(report, firstReport, plan, exists = existsSync, guardR
   return {
     totals: Object.fromEntries(ORDER.map((name) => [name, count(tests, name)])),
     flowTotals: Object.fromEntries([...ORDER, 'blocked'].map((name) => [name, count(flows, name)])),
+    projects: [...new Set(tests.map((t) => t.project))],
     flows,
     tests,
     blocked,
     extra,
-    guard: { findings, targetChanges: findings.filter((f) => f.rule === 'assertion-target-changed') },
+    guard: { findings, targetChanges: findings.filter((f) => f.rule === 'assertion-target-changed'), noFixtures: findings.filter((f) => f.rule === 'fixtures-not-imported') },
     runErrors: (report.errors ?? []).map((e) => (e.message ?? '').replace(ANSI, '').split('\n')[0]),
   };
 }

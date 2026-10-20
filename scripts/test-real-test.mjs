@@ -2,14 +2,14 @@
 //
 //   node scripts/test-real-test.mjs
 //
-// Node standard library only. No browser, no network, no model: it reads the repository files and runs guard.mjs and
-// summary.mjs on temporary folders. It is not part of the skill, so scripts/build-zips.sh does not ship it.
+// Node standard library only. No browser, no network, no model: it reads the repository files and runs guard.mjs,
+// summary.mjs and visual.mjs on temporary folders. It is not part of the skill, so scripts/build-zips.sh does not ship it.
 //
 // Covered: every SKILL.md has valid frontmatter whose name, version and trailing "(vX.Y.Z)" stamp agree; the plugin
 // version is the highest skill version; every skill is listed in plugin.json, marketplace.json, install-local.sh, the
 // installer test's expected count, the README (count word, table, Codex list, changelog), real-start and
 // docs/real-hardening-status.md; every skill has agents/openai.yaml; what SKILL.md and the README claim about safety and
-// data; the rules, the baseline comparison and the CLI of guard.mjs; summary.mjs. The guard cases that start with
+// data; the rules, the baseline comparison, the fixtures-file check and the CLI of guard.mjs; summary.mjs (any set of projects); visual.mjs (PNG decoding, the screen statuses, the page). The guard cases that start with
 // "review:" are the exact inputs two independent reviews showed to slip through an earlier guard.
 //
 // NOT covered: that the agents follow SKILL.md (needs a model), the Playwright agents themselves, natural-language
@@ -19,18 +19,21 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { deflateSync } from 'node:zlib';
 import { RULE_INFO, assertionTargetChanges, countExpects, missingAssertions, realLookingCard, scan, scanData, stripComments } from '../skills/engineering/real-test/scripts/guard.mjs';
 import { planned, summarize } from '../skills/engineering/real-test/scripts/summary.mjs';
+import { compare as compareScreens, decodePng } from '../skills/engineering/real-test/scripts/visual.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILL = path.join(ROOT, 'skills/engineering/real-test');
 const GUARD = path.join(SKILL, 'scripts/guard.mjs');
 const SUMMARY = path.join(SKILL, 'scripts/summary.mjs');
+const VISUAL = path.join(SKILL, 'scripts/visual.mjs');
 const read = (...parts) => readFileSync(path.join(ROOT, ...parts), 'utf8');
 const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const capitalized = (word) => word[0].toUpperCase() + word.slice(1);
@@ -132,8 +135,8 @@ describe('bundle', () => {
     assert.deepEqual([...sources].sort(), all.map((s) => s.rel.replace('./skills/', '')).sort());
     for (const [i, name] of names.entries()) assert.equal(path.basename(sources[i]), name, `names and sources line up at ${name}`);
     assert.match(script, new RegExp(`all ${countWord} workflows`));
-    assert.match(script, /real-test\/scripts\/\$file/);
-    for (const file of ['guard.mjs', 'summary.mjs']) assert.match(script, new RegExp(file.replace('.', '\\.')));
+    assert.match(script, /real-test\/\$file/);
+    for (const file of ['scripts/guard.mjs', 'scripts/summary.mjs', 'scripts/visual.mjs', 'assets/fixtures.ts']) assert.match(script, new RegExp(file.replace('.', '\\.')));
   });
 
   it('build-zips.sh: takes the skill list from plugin.json, no list of its own', () => {
@@ -179,21 +182,22 @@ describe('real-test SKILL.md and README claims', () => {
   const body = text.replace(/^---\n[\s\S]*?\n---\n/, '');
   const description = frontmatter(text).description;
   const readme = read('README.md');
-  const changelog = readme.slice(readme.indexOf('- **0.12.0**'), readme.indexOf('- **0.11.0**'));
+  const changelog = readme.slice(readme.indexOf('- **0.13.0**'), readme.indexOf('- **0.11.0**'));
 
   it('names its flags, its helper scripts and its siblings', () => {
-    for (const word of ['--flows', '--out', '--lang', '--allow-writes', 'init-agents', 'CHECKPOINT', 'test.fixme', '.auth/', 'storageState', '`real-check`', '`real-audit`']) {
+    for (const word of ['--flows', '--out', '--lang', '--allow-writes', '--browsers', 'init-agents', 'CHECKPOINT', 'test.fixme', '.auth/', 'storageState', '`real-check`', '`real-audit`']) {
       assert.ok(body.includes(word), `SKILL.md mentions ${word}`);
     }
-    for (const script of ['guard.mjs', 'summary.mjs']) {
+    for (const script of ['guard.mjs', 'summary.mjs', 'visual.mjs']) {
       assert.ok(body.includes(`scripts/${script}`), `SKILL.md calls ${script}`);
       assert.ok(existsSync(path.join(SKILL, 'scripts', script)), `${script} exists`);
     }
+    assert.ok(body.includes('assets/fixtures.ts') && existsSync(path.join(SKILL, 'assets/fixtures.ts')), 'SKILL.md copies the fixtures it ships');
   });
 
-  it('has the seven steps in order and the safety section', () => {
+  it('has the eight steps in order and the safety section', () => {
     const steps = [...body.matchAll(/^(\d+)\. \*\*([^*]+)\*\*/gm)].map((m) => `${m[1]} ${m[2]}`);
-    assert.deepEqual(steps, ['1 Parse `$ARGUMENTS`.', '2 Preflight.', '3 Auth.', '4 Plan.', '5 Generate.', '6 Run and heal.', '7 Report.']);
+    assert.deepEqual(steps, ['1 Parse `$ARGUMENTS`.', '2 Preflight.', '3 Auth.', '4 Plan.', '5 Generate.', '6 Run and heal.', '7 Report.', '8 CI.']);
     assert.match(body, /^## Safety$/m);
   });
 
@@ -390,7 +394,7 @@ describe('guard.mjs rules', () => {
   }
 
   it('the table above covers every rule that rejects (nothing is untested)', () => {
-    const special = new Set(['no-assertion', 'missing-write-tag']); // separate tests below
+    const special = new Set(['no-assertion', 'missing-write-tag', 'fixtures-changed']); // separate tests below
     for (const [rule, [action]] of Object.entries(RULE_INFO)) if (action === 'reject' && !special.has(rule)) assert.ok(rule in MUST_REJECT, `test table covers ${rule}`);
   });
 
@@ -549,6 +553,15 @@ describe('guard.mjs rules', () => {
     assert.equal(assertionTargetChanges(before, before.replace("name: 'Retry'", "name: 'Try again'")).count, 1);
     const viaConst = (name) => wrap(`    const retry = page.getByRole('button', { name: '${name}' });\n    await expect(retry).toBeEnabled();`);
     assert.equal(assertionTargetChanges(viaConst('Retry'), viaConst('Try again')).count, 0, 'a locator held in a variable is the healer\'s to repair');
+  });
+
+  it('a spec may import the fixtures from its own folder; one that does not is warned about while the fixtures file is there', () => {
+    const ctx = { file: '/project/tests/real-test/a.spec.ts', root: '/project/tests/real-test', fixtures: true };
+    const imports = fires("import { test as t } from './real-test.fixtures';", ctx);
+    assert.ok(!imports.has('foreign-code') && !imports.has('fixtures-not-imported'));
+    assert.ok(fires("import { x } from './helpers';", ctx).has('fixtures-not-imported'), 'the wrap() import of @playwright/test is not the fixtures');
+    assert.ok(!fires("import { x } from './helpers';", { ...ctx, fixtures: false }).has('fixtures-not-imported'), 'no warning when the fixtures file is not there');
+    assert.equal(RULE_INFO['fixtures-not-imported'][0], 'warn');
   });
 });
 
@@ -918,6 +931,97 @@ describe('guard.mjs command line', () => {
       done();
     }
   });
+
+  describe('real-test.fixtures.ts', () => {
+    const ASSET = path.join(SKILL, 'assets/fixtures.ts');
+    const imports = (source) => source.replace("from '@playwright/test'", "from './real-test.fixtures'");
+    const FLOW_WITH_FIXTURES = imports(STRONG);
+
+    it('is accepted, and not scanned, only when it is byte-identical to assets/fixtures.ts', () => {
+      const { dir, done } = temp();
+      try {
+        copyFileSync(ASSET, path.join(dir, 'real-test.fixtures.ts'));
+        writeFileSync(path.join(dir, 'good.spec.ts'), imports(CLEAN));
+        writeFileSync(path.join(dir, 'seed.spec.ts'), SEED);
+        const result = run(dir);
+        assert.equal(result.status, 0, JSON.stringify(lines(result)));
+        assert.deepEqual(lines(result), [{ checked: 3, rejected: [], restored: [], warnings: 0 }]);
+        assert.ok(scan(readFileSync(ASSET, 'utf8'), { spec: false }).some((f) => f.action === 'reject'), 'scanned as a helper the asset would be rejected: that is why it is compared instead');
+      } finally {
+        done();
+      }
+    });
+
+    it('rejects a modified copy as fixtures-changed, even by one byte', () => {
+      const { dir, done } = temp();
+      try {
+        writeFileSync(path.join(dir, 'real-test.fixtures.ts'), `${readFileSync(ASSET, 'utf8')}\n`);
+        writeFileSync(path.join(dir, 'good.spec.ts'), imports(CLEAN));
+        const result = run(dir);
+        assert.equal(result.status, 1);
+        assert.deepEqual(summaryOf(result).rejected, ['real-test.fixtures.ts']);
+        assert.deepEqual(findingsOf(result).map((f) => [f.file, f.rule, f.action]), [['real-test.fixtures.ts', 'fixtures-changed', 'reject']]);
+        assert.ok(existsSync(path.join(dir, 'real-test.fixtures.ts.rejected')));
+      } finally {
+        done();
+      }
+    });
+
+    it('only the fixtures file at the top of the folder is special', () => {
+      const { dir, done } = temp();
+      try {
+        mkdirSync(path.join(dir, 'sub'));
+        writeFileSync(path.join(dir, 'sub/real-test.fixtures.ts'), "export const x = 1;\nawait fetch('/api');\n");
+        const result = run(dir);
+        assert.deepEqual(summaryOf(result).rejected, ['sub/real-test.fixtures.ts']);
+        assert.deepEqual(findingsOf(result).map((f) => f.rule), ['in-page-network']);
+      } finally {
+        done();
+      }
+    });
+
+    it('the heal cannot change it: the pre-heal copy is put back', () => {
+      const h = heal({ before: FLOW_WITH_FIXTURES, after: FLOW_WITH_FIXTURES, extraBefore: { 'real-test.fixtures.ts': readFileSync(ASSET, 'utf8') }, extraAfter: { 'real-test.fixtures.ts': `${readFileSync(ASSET, 'utf8')}// healed\n` } });
+      try {
+        assert.equal(h.result.status, 1);
+        assert.deepEqual(h.summary.restored, ['real-test.fixtures.ts']);
+        assert.deepEqual(h.summary.rejected, []);
+        assert.deepEqual(h.findings.map((f) => [f.rule, f.action]), [['protected-file-changed', 'restored']]);
+        assert.equal(h.file('real-test.fixtures.ts'), readFileSync(ASSET, 'utf8'));
+      } finally {
+        h.done();
+      }
+    });
+
+    it('warns about a planned spec that does not import it (no observations or screenshots), and reports it through summary.mjs', () => {
+      const { dir, done } = temp();
+      try {
+        const tests = path.join(dir, 'tests');
+        mkdirSync(tests);
+        copyFileSync(ASSET, path.join(tests, 'real-test.fixtures.ts'));
+        writeFileSync(path.join(tests, 'with.spec.ts'), imports(CLEAN));
+        writeFileSync(path.join(tests, 'plain.spec.ts'), CLEAN);
+        writeFileSync(path.join(tests, 'seed.spec.ts'), SEED);
+        const json = path.join(dir, 'guard.json');
+        const result = run(tests, '--json', json);
+        assert.equal(result.status, 0, 'a warning does not block');
+        assert.deepEqual(summaryOf(result), { checked: 4, rejected: [], restored: [], warnings: 1 });
+        assert.deepEqual(findingsOf(result).map((f) => [f.file, f.rule, f.action]), [['plain.spec.ts', 'fixtures-not-imported', 'warn']]);
+        const plan = path.join(dir, 'plan.md');
+        writeFileSync(plan, `#### 1.1. With\n\n**File:** \`${path.relative(process.cwd(), path.join(tests, 'with.spec.ts'))}\`\n`);
+        assert.equal(summaryOf(run(tests, '--plan', plan)).warnings, 0, 'a spec outside the plan is not flagged');
+        rmSync(path.join(tests, 'real-test.fixtures.ts'));
+        assert.equal(summaryOf(run(tests)).warnings, 0, 'without the fixtures file there is nothing to import');
+        const results = path.join(dir, 'results.json');
+        writeFileSync(results, JSON.stringify(FINAL));
+        const summary = spawnSync(process.execPath, [SUMMARY, results, '--guard', json], { encoding: 'utf8' });
+        assert.equal(summary.status, 0, summary.stderr);
+        assert.deepEqual(JSON.parse(summary.stdout).guard.noFixtures.map((f) => [f.source, f.file]), [['guard.json', 'plain.spec.ts']]);
+      } finally {
+        done();
+      }
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -1068,6 +1172,227 @@ describe('summary.mjs', () => {
       assert.equal(JSON.parse(linked.stdout).flows.length, 4);
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('any set of projects: one entry per real-test-* project (Firefox and WebKit next to desktop and phone), and the fixtures screen is not a failure screenshot', () => {
+    const wide = structuredClone(FINAL);
+    const screen = { name: 'real-test-screen', contentType: 'image/png', path: path.join(process.cwd(), 'out/screen.png') };
+    wide.suites[0].suites[0].specs[0].tests.push(
+      testRow('real-test-firefox', 'expected', [result('passed', { attachments: [screen] })]),
+      testRow('real-test-webkit', 'unexpected', [result('failed', { errors: [{ message: 'Error: nope' }], attachments: [screen, { name: 'screenshot', contentType: 'image/png', path: path.join(process.cwd(), 'out/failed.png') }] })]),
+    );
+    const summary = summarize(wide);
+    assert.deepEqual(summary.projects, ['real-test-desktop', 'real-test-mobile', 'real-test-firefox', 'real-test-webkit']);
+    const a = summary.flows.find((f) => f.file.endsWith('a.spec.ts'));
+    assert.deepEqual(a.projects, { 'real-test-desktop': 'passed', 'real-test-mobile': 'passed', 'real-test-firefox': 'passed', 'real-test-webkit': 'failed' });
+    assert.equal(a.status, 'failed');
+    assert.equal(summary.flowTotals.failed, 2);
+    assert.deepEqual(summary.tests.find((t) => t.project === 'real-test-firefox').screenshots, []);
+    assert.deepEqual(summary.tests.find((t) => t.project === 'real-test-webkit').screenshots, ['out/failed.png']);
+    assert.deepEqual(summarize(FINAL).projects, ['real-test-desktop', 'real-test-mobile']);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// visual.mjs
+// ---------------------------------------------------------------------------------------------------------------------
+
+const CRC = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+const crc32 = (buffer) => {
+  let c = 0xffffffff;
+  for (const byte of buffer) c = CRC[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const chunk = (type, data) => {
+  const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
+  const out = Buffer.alloc(12 + data.length);
+  out.writeUInt32BE(data.length, 0);
+  body.copy(out, 4);
+  out.writeUInt32BE(crc32(body), 8 + data.length);
+  return out;
+};
+/** A valid 8-bit PNG (RGB, or RGBA with `alpha`) whose rows all use PNG filter type `filter`; pixel(x, y) -> [r, g, b, a]. */
+function png(width, height, pixel, { alpha = false, filter = 0 } = {}) {
+  const bpp = alpha ? 4 : 3;
+  const stride = width * bpp;
+  const rows = Array.from({ length: height }, (_, y) => Buffer.from(Array.from({ length: stride }, (__, i) => pixel(Math.floor(i / bpp), y)[i % bpp])));
+  const filtered = rows.map((row, y) => {
+    const up = y > 0 ? rows[y - 1] : Buffer.alloc(stride);
+    const out = Buffer.alloc(stride + 1);
+    out[0] = filter;
+    for (let x = 0; x < stride; x++) {
+      const a = x >= bpp ? row[x - bpp] : 0;
+      const b = up[x];
+      const c = x >= bpp ? up[x - bpp] : 0;
+      const p = a + b - c;
+      const [pa, pb, pc] = [Math.abs(p - a), Math.abs(p - b), Math.abs(p - c)];
+      out[x + 1] = row[x] - [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][filter];
+    }
+    return out;
+  });
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = alpha ? 6 : 2;
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', header), chunk('IDAT', deflateSync(Buffer.concat(filtered))), chunk('IEND', Buffer.alloc(0))]);
+}
+const flat = (rgb) => () => [...rgb, 255];
+/** A 10 x 10 PNG, grey 200, with `dots` pixels turned black. */
+const spotted = (dots, filter = 0) => png(10, 10, (x, y) => (y * 10 + x < dots ? [0, 0, 0, 255] : [200, 200, 200, 255]), { filter });
+
+describe('visual.mjs', () => {
+  it('decodes 8-bit RGB and RGBA PNGs written with every filter type', () => {
+    const gradient = (x, y) => [(x * 37 + y * 11) % 256, (x * 5 + y * y) % 256, (y * 53 + x) % 256, (x * y * 9) % 256];
+    for (const alpha of [false, true]) {
+      for (const filter of [0, 1, 2, 3, 4]) {
+        const decoded = decodePng(png(9, 6, gradient, { alpha, filter }));
+        assert.deepEqual([decoded.width, decoded.height], [9, 6]);
+        for (let y = 0; y < 6; y++) {
+          for (let x = 0; x < 9; x++) {
+            const [r, g, b, a] = gradient(x, y);
+            const at = (y * 9 + x) * 4;
+            assert.deepEqual([...decoded.data.subarray(at, at + 4)], [r, g, b, alpha ? a : 255], `alpha ${alpha}, filter ${filter}, pixel ${x},${y}`);
+          }
+        }
+      }
+    }
+  });
+
+  it('compare: same, changed (percent of pixels), size-changed and not-comparable', () => {
+    assert.deepEqual(compareScreens(spotted(0), spotted(0)), { status: 'same', diff: 0 });
+    assert.deepEqual(compareScreens(spotted(5, 0), spotted(5, 4)), { status: 'same', diff: 0 }, 'the same pixels under another filter are the same');
+    const nudged = png(10, 10, flat([203, 197, 200]));
+    assert.deepEqual(compareScreens(png(10, 10, flat([200, 200, 200])), nudged), { status: 'same', diff: 0 }, 'a difference of 3 per channel is noise');
+    assert.deepEqual(compareScreens(spotted(0), spotted(5)), { status: 'changed', diff: 5 });
+    assert.equal(compareScreens(spotted(0), spotted(1)).status, 'changed', '1 of 100 pixels is above 0.1 %');
+    const big = (dots) => png(100, 100, (x, y) => (y * 100 + x < dots ? [0, 0, 0, 255] : [200, 200, 200, 255]));
+    assert.deepEqual(compareScreens(big(0), big(10)), { status: 'same', diff: 0.1 }, '0.1 % is not above the threshold');
+    assert.deepEqual(compareScreens(big(0), big(11)), { status: 'changed', diff: 0.11 });
+    assert.equal(compareScreens(spotted(0), png(10, 12, flat([200, 200, 200]))).status, 'size-changed');
+    assert.equal(compareScreens(spotted(0), png(9, 10, flat([200, 200, 200]))).status, 'size-changed');
+    const palette = Buffer.from(spotted(3));
+    palette[25] = 3; // colour type 3: an indexed PNG, not decoded
+    assert.equal(compareScreens(spotted(0), palette).status, 'not-comparable');
+    assert.equal(compareScreens(Buffer.from('not a png, but long enough to look like data'), spotted(0)).status, 'not-comparable');
+    assert.equal(compareScreens(palette, Buffer.from(palette)).status, 'same', 'identical bytes need no decoding');
+  });
+
+  // A report folder per run: tmp/real-test-reports/localhost-3000-<date>/screens/<flow>--<project>.png, and a results.json.
+  const attach = (name, contentType, body) => ({ name, contentType, body: Buffer.from(body).toString('base64') });
+  const OBSERVATIONS = {
+    console: [{ text: 'Failed to load <b>resource</b>: 404', url: 'http://localhost:3000/missing.js', party: 'same-origin' }],
+    pageErrors: [],
+    badResponses: [{ url: 'http://localhost:3000/missing.js', status: 404, method: 'GET', party: 'same-origin' }],
+    failedRequests: [{ url: 'https://cdn.example.net/x.css', method: 'GET', error: 'net::ERR_FAILED', party: 'third-party' }],
+    errors: [],
+  };
+  const A11Y = { violations: [{ id: 'color-contrast', impact: 'serious', help: 'Elements must have sufficient color contrast', nodes: 3 }] };
+  const shot = (project, image, extra = []) => testRow(project, 'expected', [result('passed', { attachments: [attach('real-test-screen', 'image/png', image), attach('real-test-observations', 'application/json', JSON.stringify(OBSERVATIONS)), attach('real-test-a11y', 'application/json', JSON.stringify(A11Y)), ...extra] })]);
+  const flow = (slug, tests) => fileSuite(`${slug}.spec.ts`, slug, [spec(`Flow ${slug}`, `${slug}.spec.ts`, tests)]);
+  const report = (...suites) => ({ config: { rootDir: path.join(process.cwd(), 'tests/real-test') }, errors: [], suites });
+  const visual = (...args) => spawnSync(process.execPath, [VISUAL, ...args], { encoding: 'utf8' });
+  const folder = () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'real-test-visual-'));
+    const reports = path.join(dir, 'real-test-reports');
+    mkdirSync(path.join(reports, 'localhost-3000-2026-10-19/screens'), { recursive: true });
+    mkdirSync(path.join(reports, 'localhost-3000-2026-10-20'), { recursive: true });
+    return { dir, earlier: path.join(reports, 'localhost-3000-2026-10-19'), now: path.join(reports, 'localhost-3000-2026-10-20'), reports, done: () => rmSync(dir, { recursive: true, force: true }) };
+  };
+
+  it('statuses per screen: same, changed, size-changed, new and missing; the baseline is found by itself; the page is self-contained', () => {
+    const f = folder();
+    try {
+      const grey = spotted(0);
+      const dotted = spotted(20);
+      const taller = png(10, 14, flat([200, 200, 200]));
+      for (const [name, image] of [['same--real-test-desktop', grey], ['changed--real-test-desktop', grey], ['size--real-test-desktop', grey], ['gone--real-test-desktop', grey]]) writeFileSync(path.join(f.earlier, 'screens', `${name}.png`), image);
+      const results = path.join(f.dir, 'results.json');
+      writeFileSync(results, JSON.stringify(report(flow('same', [shot('real-test-desktop', grey)]), flow('changed', [shot('real-test-desktop', dotted)]), flow('size', [shot('real-test-desktop', taller), shot('real-test-mobile', taller)]), flow('fresh', [shot('real-test-desktop', grey)]))));
+      const out = visual(results, '--report', f.now);
+      assert.equal(out.status, 0, out.stderr);
+      const line = JSON.parse(out.stdout);
+      assert.deepEqual(line.counts, { same: 1, changed: 1, 'size-changed': 1, new: 2, missing: 1, 'not-comparable': 0 });
+      assert.match(line.baseline, /localhost-3000-2026-10-19$/);
+      const screens = Object.fromEntries(line.flows.map((x) => [x.flow, Object.fromEntries(Object.entries(x.projects).map(([project, p]) => [project, p.screen]))]));
+      assert.deepEqual(screens, {
+        same: { 'real-test-desktop': 'same' },
+        changed: { 'real-test-desktop': 'changed' },
+        size: { 'real-test-desktop': 'size-changed', 'real-test-mobile': 'new' },
+        fresh: { 'real-test-desktop': 'new' },
+        gone: { 'real-test-desktop': 'missing' },
+      });
+      assert.equal(line.flows.find((x) => x.flow === 'changed').projects['real-test-desktop'].diff, 20);
+      assert.deepEqual(line.flows.find((x) => x.flow === 'changed').projects['real-test-desktop'], { screen: 'changed', diff: 20, observed: true, console: 1, pageErrors: 0, badResponses: 1, failedRequests: 1, a11y: 1 });
+      assert.deepEqual(readdirSync(path.join(f.now, 'screens')).sort(), ['changed--real-test-desktop.png', 'fresh--real-test-desktop.png', 'same--real-test-desktop.png', 'size--real-test-desktop.png', 'size--real-test-mobile.png']);
+      assert.ok(readFileSync(path.join(f.now, 'screens/changed--real-test-desktop.png')).equals(dotted), 'the screen is copied byte for byte');
+      const html = readFileSync(path.join(f.now, 'visual.html'), 'utf8');
+      assert.equal(line.html.endsWith('visual.html'), true);
+      assert.match(html, /data:image\/png;base64,/);
+      assert.match(html, /mix-blend-mode:difference/);
+      assert.match(html, /20% of the pixels differ/);
+      assert.match(html, /404/);
+      assert.match(html, /color-contrast/);
+      assert.match(html, /Failed to load &lt;b&gt;resource&lt;\/b&gt;/, 'observation text is escaped');
+      assert.doesNotMatch(html, /<b>resource/);
+      assert.doesNotMatch(html, /<script|(?:src|href)="https?:|url\((?!data:)/i, 'no script and no external file');
+      assert.match(html, /prefers-color-scheme:dark/);
+      assert.ok(readFileSync(path.join(f.earlier, 'screens/gone--real-test-desktop.png')).equals(grey), 'the baseline is not touched');
+    } finally {
+      f.done();
+    }
+  });
+
+  it('without a baseline every screen is new; an explicit baseline must be another report with screens; usage errors exit 2', () => {
+    const f = folder();
+    try {
+      const results = path.join(f.dir, 'results.json');
+      writeFileSync(results, JSON.stringify(report(flow('a', [shot('real-test-desktop', spotted(0))]), flow('b', [testRow('real-test-desktop', 'expected', [result('passed')])]))));
+      const out = visual(results, '--report', path.join(f.reports, 'other-2026-10-20'));
+      assert.equal(out.status, 0, out.stderr);
+      const line = JSON.parse(out.stdout);
+      assert.deepEqual(line.counts, { same: 0, changed: 0, 'size-changed': 0, new: 1, missing: 0, 'not-comparable': 0 });
+      assert.equal(line.baseline, null);
+      assert.equal(line.flows.find((x) => x.flow === 'b').projects['real-test-desktop'].observed, false, 'a test without the fixtures has no observations');
+      assert.match(readFileSync(path.join(f.reports, 'other-2026-10-20/visual.html'), 'utf8'), /does not use the fixtures/);
+      assert.equal(visual(results, '--report', f.now, '--baseline', f.now).status, 2);
+      assert.equal(visual(results, '--report', f.now, '--baseline', path.join(f.dir, 'nowhere')).status, 2);
+      assert.equal(visual(results, '--report', f.now, '--baseline', f.reports).status, 2, 'a folder without screens/ is not a baseline');
+      assert.equal(visual(results).status, 2);
+      assert.equal(visual(results, '--report').status, 2);
+      assert.equal(visual(path.join(f.dir, 'missing.json'), '--report', f.now).status, 2);
+      assert.equal(visual().status, 2);
+      writeFileSync(path.join(f.dir, 'bad.json'), '{');
+      assert.equal(visual(path.join(f.dir, 'bad.json'), '--report', f.now).status, 2);
+    } finally {
+      f.done();
+    }
+  });
+
+  it('takes the newest earlier report of the same host, not another host and not a later one; works through a symlink', () => {
+    const f = folder();
+    try {
+      const grey = spotted(0);
+      for (const name of ['localhost-3000-2026-10-18', 'localhost-3000-2026-10-20-2', 'other-2026-10-19']) {
+        mkdirSync(path.join(f.reports, name, 'screens'), { recursive: true });
+        writeFileSync(path.join(f.reports, name, 'screens/a--real-test-desktop.png'), grey);
+      }
+      writeFileSync(path.join(f.earlier, 'screens/a--real-test-desktop.png'), spotted(30));
+      const results = path.join(f.dir, 'results.json');
+      writeFileSync(results, JSON.stringify(report(flow('a', [shot('real-test-desktop', grey)]))));
+      symlinkSync(SKILL, path.join(f.dir, 'real-test'));
+      const out = spawnSync(process.execPath, [path.join(f.dir, 'real-test/scripts/visual.mjs'), results, '--report', f.now], { encoding: 'utf8' });
+      assert.equal(out.status, 0, out.stderr);
+      const line = JSON.parse(out.stdout);
+      assert.match(line.baseline, /localhost-3000-2026-10-19$/, 'the 18th is older, the 20th-2 is later, "other" is another host');
+      assert.equal(line.counts.changed, 1);
+    } finally {
+      f.done();
     }
   });
 });

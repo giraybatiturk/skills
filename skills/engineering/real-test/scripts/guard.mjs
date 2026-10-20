@@ -16,6 +16,9 @@
 //     list it: repairing a locator is allowed, pointing an assertion somewhere weaker is not, and only a reader can tell.
 // With --require-tag, every test() in a spec must carry that tag (on the test or on its describe). With --plan, that
 // requirement applies only to the specs the plan lists (older specs in the folder are left alone).
+// <tests-dir>/real-test.fixtures.ts is skill-owned: it is accepted, and not scanned, only when it is byte-identical to
+// ../assets/fixtures.ts; any other content is rejected as `fixtures-changed`. While it is present, a spec that does not import
+// it gets the warning `fixtures-not-imported` (its flow then has no observations or screenshots).
 // With --json, the findings and the summary are also written to that file.
 //
 // stdout: one JSON object per finding {file, line, rule, action, message}, then one summary object. Offending source lines
@@ -33,6 +36,11 @@ const CODE_FILE = /\.[cm]?[jt]sx?$/;
 const DATA_FILE = /\.(?:json|csv|tsv|txt|ya?ml|toml|ini|md|xml|html?)$|^\.env/i;
 const SPEC = /\.(?:spec|test)\.[cm]?[jt]sx?$/;
 const SEED = /^seed\.spec\.[cm]?[jt]sx?$/;
+
+// The fixtures file the preflight copies from assets/fixtures.ts; the guard accepts it only unchanged.
+const FIXTURES = 'real-test.fixtures.ts';
+const FIXTURES_ASSET = path.join(path.dirname(fileURLToPath(import.meta.url)), '../assets/fixtures.ts');
+const FIXTURES_IMPORT = /^\.\/real-test\.fixtures(?:\.[cm]?[jt]s)?$/;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Rules. `on: 'code'` runs on the source with comments, string contents and regex bodies blanked (a UI text such as
@@ -110,12 +118,15 @@ export const RULE_INFO = {
   'url-secret': ['reject', 'a URL carries a secret (token, key, password or credentials)'],
   'real-email': ['reject', 'an email address that may be real (use name@example.com)'],
   'real-card': ['reject', 'a card number that is not a published test card'],
+  // The skill-owned fixtures file.
+  'fixtures-changed': ['reject', "real-test.fixtures.ts differs from the skill's assets/fixtures.ts (skill-owned; copy it again)"],
   // Raised only against a baseline.
   'assertion-changed': ['restored', 'assertions of the pre-heal test are gone or changed; restored'],
   'file-deleted': ['restored', 'the heal deleted this file; restored'],
   'protected-file-changed': ['restored', 'the heal edited the seed, a helper or a data file; restored'],
   'rejected-after-heal': ['restored', 'the heal broke a rule; the pre-heal test is back and still fails'],
   'assertion-target-changed': ['warn', 'assertions now look at different locator text (getByText, role name, label, selector); read the diff'],
+  'fixtures-not-imported': ['warn', 'the spec does not import ./real-test.fixtures, so its flow has no observations or screenshots'],
 };
 
 const simple = (id, on, re) => ({ id, on, re });
@@ -517,9 +528,9 @@ const insideRoot = (root, target) => {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 };
 
-/** Findings for one code file's source: [{ line, rule, action, message }]. ctx: { spec = true, file, root, requireTag }. */
+/** Findings for one code file's source: [{ line, rule, action, message }]. ctx: { spec = true, file, root, requireTag, fixtures }. */
 export function scan(source, ctx = {}) {
-  const { spec = true, file, root, requireTag } = ctx;
+  const { spec = true, file, root, requireTag, fixtures } = ctx;
   const prepared = prepare(source);
   const { code, masked } = prepared;
   const findings = [];
@@ -535,14 +546,17 @@ export function scan(source, ctx = {}) {
   }
 
   // Imports: only @playwright/test and files inside the tests folder.
+  let importsFixtures = false;
   for (const m of code.matchAll(IMPORT)) {
     if (masked.slice(m.index, m.index + m[1].length) !== m[1]) continue; // the words sit inside a string
     const specifier = m[3];
+    if (FIXTURES_IMPORT.test(specifier)) importsFixtures = true;
     if (specifier === '@playwright/test') continue;
     const relative = specifier.startsWith('.');
     const outside = relative && (file && root ? !insideRoot(root, path.resolve(path.dirname(file), specifier)) : specifier.startsWith('..'));
     if (!relative || outside) add(m.index, 'foreign-code');
   }
+  if (spec && fixtures && !importsFixtures) findings.push({ line: 1, rule: 'fixtures-not-imported', action: 'warn', message: RULE_INFO['fixtures-not-imported'][1] });
 
   const statementRanges = statements(masked);
   const statementAt = (index) => statementRanges.find(([from, to]) => index >= from && index <= to) ?? [0, masked.length];
@@ -650,9 +664,12 @@ export function guard(dir, options = {}) {
     findings.push({ file: name, line: 1, rule, action: 'restored', message: RULE_INFO[rule][1] });
   };
   const tagFor = (file) => (requireTag && (!plan || plan.has(path.resolve(file))) ? requireTag : undefined);
-  const analyze = (file, root, tag) => {
+  const analyze = (file, root, tag, fixtures = false) => {
+    if (path.relative(root, file) === FIXTURES) {
+      return readFileSync(file).equals(readFileSync(FIXTURES_ASSET)) ? [] : [{ line: 1, rule: 'fixtures-changed', action: 'reject', message: RULE_INFO['fixtures-changed'][1] }];
+    }
     const source = readFileSync(file, 'utf8');
-    return isCode(file) ? scan(source, { spec: isSpec(file), file, root, requireTag: tag }) : scanData(source);
+    return isCode(file) ? scan(source, { spec: isSpec(file), file, root, requireTag: tag, fixtures }) : scanData(source);
   };
 
   if (baselineDir) {
@@ -672,10 +689,11 @@ export function guard(dir, options = {}) {
     }
   }
 
+  const withFixtures = existsSync(path.join(dir, FIXTURES));
   const all = files(dir);
   for (const file of all) {
     const name = rel(file);
-    const own = analyze(file, dir, tagFor(file)).map((f) => ({ file: name, ...f }));
+    const own = analyze(file, dir, tagFor(file), withFixtures && (!plan || plan.has(path.resolve(file)))).map((f) => ({ file: name, ...f }));
     findings.push(...own);
     if (!own.some((f) => f.action === 'reject')) continue;
     renameSync(file, `${file}.rejected`);
