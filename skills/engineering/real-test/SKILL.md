@@ -22,7 +22,7 @@ Not the other two. `real-check` scans any public URL with fixed rules, no AI, ab
    - `--flows FILE`: the flows to cover, one per line; read it. The plan covers those and nothing else. Without it the planner picks the key flows, at most 8 scenarios.
    - `--out DIR`: folder for the tests, default `./tests/real-test/` (`<out>` below). Only this skill writes there: the guard checks every code file in it and renames the ones that break a rule. If the project has a tests convention, use `<that folder>/real-test/`, never a folder that already holds the user's tests; say so. `<out>` must be inside the project.
    - Reports go to `./real-test-reports/<host>-<date>/` (`<report>` below; `<host>` with `:` as `-`, `<date>` as `YYYY-MM-DD`, add `-2`, `-3` if the folder exists), or the project's reports convention.
-   - `--lang tr|en`: language of the plan and the report. Default: the language of the user's conversation (ask once if it is neither).
+   - `--lang tr|en`: language of the plan, `report.md` and the final chat message. Default: English, whatever language the conversation is in; never ask. Use Turkish only when the user passes `--lang tr` or explicitly asks for Turkish. Everything the skill itself writes besides those (briefs, test titles' surrounding code, `visual.html`, guard and summary output) stays English.
    - `--allow-writes`: see Safety. Off by default.
    - `--browsers firefox,webkit`: also run the flows in these desktop browsers (1280 px), besides Chromium. `firefox`, `webkit` or both; anything else: stop and show the usage. Default: Chromium only.
 
@@ -79,7 +79,7 @@ Not the other two. `real-check` scans any public URL with fixed rules, no AI, ab
 
 4. **Plan.** If `specs/real-test-plan.md` exists, ask once whether to reuse it (go to the checkpoint) or replace it. Otherwise, or to replace, invoke the `playwright-test-planner` agent (Codex: `playwright_test_planner`) with this brief and the standing rules from Safety:
    - Call `planner_setup_page` once: `project: "real-test-desktop"`, `seedFile: "<out>/seed.spec.ts"`. If the page it opens is not on `<origin>`, save no plan and start the reply with `WRONG_ORIGIN`; then stop and say so.
-   - Scenarios: those from `--flows`, otherwise the key user flows, at most 8. Each scenario is independent and starts from a fresh state. Names and steps in the report language, UI text quoted as the app shows it.
+   - Scenarios: those from `--flows`, otherwise the key user flows, at most 8. Each scenario is independent and starts from a fresh state. Scenario names are always English (they become test titles and appear in `visual.html`); steps in the report language, UI text quoted as the app shows it.
    - Save with `planner_save_plan`: `fileName: "specs/real-test-plan.md"`, each test's `file` `<out>/<scenario-slug>.spec.ts` (flat, ASCII, lower case, dashes), the suite `seedFile` the seed.
    - Login wall (password field, 401/403, redirect to a sign-in page) and no `.auth/real-test.json`: do not save a plan; start the reply with `LOGIN_REQUIRED`.
    - Afterwards check that the plan has the `**Seed:**` and `**File:**` lines `planner_save_plan` writes. If not, the agent did not run (a client that cannot start it writes a plan itself): say so and stop.
@@ -128,7 +128,8 @@ Not the other two. `real-check` scans any public URL with fixed rules, no AI, ab
    - Where things are: tests in `<out>`, plan `specs/real-test-plan.md`, Playwright HTML report `<report>/html/index.html` (`npx playwright show-report <report>/html`), `<report>/visual.html`, `<report>/results.json`.
    - Rerun, with no model: `npx playwright test --project=real-test-desktop --project=real-test-mobile` plus a `--project=real-test-<browser>` for each browser in `projects` (plain `npx playwright test` when this skill wrote the config and it holds only these projects); `BASE_URL=<other URL>` points the same tests at another environment. Say that reruns hit whatever `BASE_URL` is, and that with `--allow-writes` the `@writes` tests run only against the origin they were made for.
 
-   Chat: the counts, the `report.md` path, the HTML report path, the `visual.html` path with how many screens changed, and the rerun command. Never write "the app works".
+   Chat: the counts, the `report.md` path, `<report>/visual.html` as the one page to open (it shows each flow's test status next to its screens and links the Playwright HTML report for steps, errors and traces; do not offer the HTML report as a second page), how many screens changed, and the rerun command. Never write "the app works".
+   Report page rule, every run: the only HTML report the user opens is `<report>/visual.html` as `visual.mjs` writes it (summary cards, overview table of flows by project, one collapsible card per flow, screens at a fixed scale in scroll frames, the Playwright report linked from the header). Never write another HTML report, restyle or post-process `visual.html`, or open the Playwright HTML report for the user as a second page; a layout change goes into `visual.mjs`, so every run gets it.
    If there are accessibility violations or `changed` screens and `real-audit` is in the client's skill catalog, add one line to the chat: "Next, optional: `real-audit` for an in-depth review." Skip silently if it is not installed; never invoke it.
 
    Done when `report.md` and `visual.html` exist, the sum of `flowTotals` equals the number of scenarios in the approved plan, and every flow that is not `passed` has steps and evidence or says there is none.

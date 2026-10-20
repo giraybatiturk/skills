@@ -181,6 +181,7 @@ function collect(report) {
           slug: path.basename(file).replace(/\.(?:spec|test)\.[cm]?[jt]sx?$/, ''),
           title: [...titles, spec.title].join(' > '),
           project: test.projectName,
+          outcome: test.results.at(-1)?.status, // passed, failed, timedOut, skipped (fixme), interrupted
           png: bytesOf(named('real-test-screen')),
           observations: jsonOf(named('real-test-observations')),
           a11y: jsonOf(named('real-test-a11y')),
@@ -230,23 +231,37 @@ function compareAll(tests, reportDir, baselineDir) {
 const esc = (text) => String(text ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const list = (items, render) => (items.length ? `<ul>${items.slice(0, LIST_LIMIT).map((item) => `<li>${render(item)}</li>`).join('')}${items.length > LIST_LIMIT ? `<li>${items.length - LIST_LIMIT} more in the attachment of the Playwright report</li>` : ''}</ul>` : '');
 
-const STYLE = `:root{color-scheme:light dark;--bg:#fff;--fg:#1a1a1a;--muted:#555;--line:#c8c8c8;--ok:#0a6b2d;--warn:#8a5a00;--info:#1a56a8}
-@media (prefers-color-scheme:dark){:root{--bg:#141414;--fg:#ececec;--muted:#a8a8a8;--line:#3c3c3c;--ok:#6fd28d;--warn:#f0b955;--info:#8ab4f8}}
-body{font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0 auto;max-width:90rem;padding:1rem}
-h1,h2,h3,h4{line-height:1.25}h2{margin-top:2.5rem;border-top:1px solid var(--line);padding-top:1rem}h2 small,.muted{color:var(--muted);font-weight:400}
-table{border-collapse:collapse}th,td{border:1px solid var(--line);padding:.25rem .6rem;text-align:left}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,19rem),1fr));gap:1rem;align-items:start}
-figure{margin:0}figcaption{margin-bottom:.25rem}
-.shot{display:block;width:100%;aspect-ratio:var(--w)/var(--h);background-size:100% 100%;background-repeat:no-repeat;border:1px solid var(--line)}
-.overlay{position:relative;isolation:isolate;width:100%;aspect-ratio:var(--w)/var(--h);background:#000;border:1px solid var(--line)}
+const STYLE = `:root{color-scheme:light dark;--bg:#f6f7f9;--card:#fff;--fg:#1a1a1a;--muted:#5b6170;--line:#dde0e6;--ok:#0a6b2d;--warn:#8a5a00;--info:#1a56a8;--bad:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#111316;--card:#1a1d21;--fg:#ececec;--muted:#a3a9b5;--line:#2e333a;--ok:#6fd28d;--warn:#f0b955;--info:#8ab4f8;--bad:#f2b8b5}}
+*{box-sizing:border-box}body{font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg);margin:0 auto;max-width:72rem;padding:1.5rem 1rem 4rem}
+h1{font-size:1.6rem;margin:0 0 .25rem}h2{font-size:1.05rem;margin:0}h3{font-size:.95rem;margin:1rem 0 .4rem}.muted{color:var(--muted);font-weight:400}
+a{color:var(--info)}code{font-size:.85em;overflow-wrap:anywhere}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.75rem;margin:1.25rem 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.75rem 1rem}.stat b{display:block;font-size:1.6rem;line-height:1.2}
+table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{border-bottom:1px solid var(--line);padding:.5rem .75rem;text-align:left;vertical-align:top}th{font-size:.8rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.flow{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:.75rem 0}
+.flow>summary{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;padding:.75rem 1rem;cursor:pointer}
+.flow>summary::-webkit-details-marker{display:none}.flow>summary::before{content:"▸";color:var(--muted)}.flow[open]>summary::before{content:"▾"}
+.flow>summary h2{flex:1 1 20rem}.body{padding:0 1rem 1rem;border-top:1px solid var(--line)}
+.screens{display:flex;flex-wrap:wrap;gap:1.25rem;align-items:flex-start;margin-top:1rem}
+figure{margin:0}figcaption{font-size:.85rem;margin-bottom:.35rem}
+.frame{display:block;max-height:28rem;overflow-y:auto;border:1px solid var(--line);border-radius:6px}
+.shot{display:block;width:min(100%,calc(var(--w) * .45px));aspect-ratio:var(--w)/var(--h);background-size:100% 100%;background-repeat:no-repeat}
+.frame .shot{width:calc(var(--w) * .45px);max-width:100%}
+.overlay{position:relative;isolation:isolate;width:min(100%,calc(var(--w) * .45px));aspect-ratio:var(--w)/var(--h);background:#000}
 .layer{position:absolute;left:0;top:0;width:calc(var(--lw)/var(--w)*100%);aspect-ratio:var(--lw)/var(--lh);background-size:100% 100%;background-repeat:no-repeat}
 .layer+.layer{mix-blend-mode:difference}
-.badge{border:1px solid currentColor;border-radius:4px;padding:0 .4em;font-size:.875em;font-weight:600;white-space:nowrap}
-.same{color:var(--ok)}.changed,.size-changed{color:var(--warn)}.new{color:var(--info)}.missing,.not-comparable{color:var(--muted)}
-details{margin:.75rem 0}summary{cursor:pointer;font-weight:600}
-ul{margin:.25rem 0 .75rem;padding-left:1.25rem}code{overflow-wrap:anywhere}`;
+.badge{display:inline-block;border:1px solid currentColor;border-radius:999px;padding:0 .55em;font-size:.78rem;font-weight:600;white-space:nowrap}
+.same,.passed{color:var(--ok)}.changed,.size-changed,.issue{color:var(--warn)}.new{color:var(--info)}.missing,.not-comparable,.skipped{color:var(--muted)}.failed,.timedOut,.interrupted{color:var(--bad)}
+details details{margin:.75rem 0}details details summary{cursor:pointer;font-weight:600}
+ul{margin:.25rem 0 .5rem;padding-left:1.25rem}.note{font-size:.85rem;color:var(--muted);margin-top:2rem}
+.brand{margin:0 0 .5rem;font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--info)}
+h1{letter-spacing:-.01em}.stat{box-shadow:0 1px 2px rgb(0 0 0 / .04)}.flow{box-shadow:0 1px 2px rgb(0 0 0 / .04)}
+.flow>summary h2 .muted{display:block;font-size:.75rem;margin-top:.15rem}`;
 
-function buildPage({ rows, counts, baselineLabel, resultsLabel }) {
+function buildPage({ rows, counts, baselineLabel, resultsLabel, playwrightReport }) {
   const images = new Map();
   const image = (png) => {
     if (!images.has(png)) images.set(png, `i${images.size}`);
@@ -260,7 +275,7 @@ function buildPage({ rows, counts, baselineLabel, resultsLabel }) {
     const { width, height } = size(png);
     return `<div class="shot ${image(png)}" role="img" aria-label="${esc(label)}" style="--w:${width};--h:${height}"></div>`;
   };
-  const badge = (status) => `<span class="badge ${status}">${status}</span>`;
+  const badge = (status) => `<span class="badge ${esc(status)}">${esc(status)}</span>`; // outcome comes from results.json
   const percent = (row) => (row.diff === undefined ? '' : ` ${row.diff}% of the pixels differ.`);
 
   const overlay = (row) => {
@@ -270,12 +285,29 @@ function buildPage({ rows, counts, baselineLabel, resultsLabel }) {
     return `<div class="overlay" role="img" aria-label="Difference between the baseline and the current screen, ${esc(row.project)}" style="--w:${Math.max(a.width, b.width)};--h:${Math.max(a.height, b.height)}">${layer(row.baseline, a)}${layer(row.png, b)}</div>`;
   };
 
+  const issuesOf = (row) => {
+    const o = row.observations;
+    if (!o) return [];
+    return [
+      [o.console?.length, 'console error'],
+      [o.pageErrors?.length, 'page error'],
+      [o.badResponses?.length, 'response 400+'],
+      [o.failedRequests?.length, 'failed request'],
+      [row.a11y?.violations?.length, 'accessibility'],
+    ].filter(([n]) => n);
+  };
+  const chips = (row) => {
+    if (!row.observations) return '<span class="muted">no observations</span>';
+    const found = issuesOf(row);
+    return found.length ? found.map(([n, what]) => `<span class="badge issue">${n} ${what}</span>`).join(' ') : '<span class="muted">clean</span>';
+  };
+
   const observed = (row) => {
     const o = row.observations;
     if (!o) return `<p class="muted">No observations for ${esc(row.project)}: the spec does not use the fixtures, or the test did not run.</p>`;
+    if (!issuesOf(row).length && !o.errors?.length) return '';
     const violations = row.a11y?.violations ?? [];
-    return `<h4>${esc(row.project)}</h4>
-<p>Console errors: ${o.console?.length ?? 0}. Page errors: ${o.pageErrors?.length ?? 0}. Responses with status 400 or more: ${o.badResponses?.length ?? 0}. Failed requests: ${o.failedRequests?.length ?? 0}. Accessibility violations: ${row.a11y ? violations.length : 'not run'}.</p>
+    return `<h3>${esc(row.project)}</h3>
 ${o.console?.length ? `<p>Console errors</p>${list(o.console, (e) => `${esc(e.text)} <span class="muted">(<code>${esc(e.url)}</code> ${esc(e.party)})</span>`)}` : ''}
 ${o.pageErrors?.length ? `<p>Page errors</p>${list(o.pageErrors, (e) => esc(e.message))}` : ''}
 ${o.badResponses?.length ? `<p>Responses with status 400 or more</p>${list(o.badResponses, (e) => `${esc(e.status)} ${esc(e.method)} <code>${esc(e.url)}</code> <span class="muted">${esc(e.party)}</span>`)}` : ''}
@@ -285,6 +317,17 @@ ${o.errors?.length ? `<p>The fixtures could not record everything</p>${list(o.er
   };
 
   const flows = groupBy(rows, (row) => row.slug);
+  const projects = [...new Set(rows.map((row) => row.project))];
+  const overview = flows
+    .map(([slug, group]) => {
+      const first = group.find((row) => row.file) ?? group[0];
+      const cells = projects.map((p) => {
+        const row = group.find((r) => r.project === p);
+        return `<td>${row?.outcome ? badge(row.outcome) : '<span class="muted">-</span>'} ${row?.status ? `<span class="muted">screen</span> ${badge(row.status)}` : ''}<br>${row ? chips(row) : ''}</td>`;
+      });
+      return `<tr><td><a href="#flow-${esc(slug)}">${esc((first.title || slug).split(' > ').at(-1))}</a></td>${cells.join('')}</tr>`;
+    })
+    .join('\n');
   const sections = flows
     .map(([slug, group]) => {
       const first = group.find((row) => row.file) ?? group[0];
@@ -292,35 +335,53 @@ ${o.errors?.length ? `<p>The fixtures could not record everything</p>${list(o.er
         .map((row) => {
           const label = `${row.project}: ${row.status ?? 'no screen'}`;
           const body = row.png ? shot(row.png, `Screen of ${slug}, ${label}`) : row.baseline ? shot(row.baseline, `Baseline screen of ${slug}, ${row.project}`) : '<p class="muted">No screen: the spec does not use the fixtures, or the test did not run.</p>';
-          const link = row.png ? `<a href="screens/${esc(row.name)}.png">${body}</a>` : body;
-          return `<figure><figcaption><strong>${esc(row.project)}</strong> ${row.status ? badge(row.status) : ''}${esc(percent(row))}${row.note ? ` <span class="muted">${esc(row.note)}</span>` : ''}${row.status === 'missing' ? ' <span class="muted">(baseline shown)</span>' : ''}</figcaption>${link}</figure>`;
+          const link = row.png ? `<a class="frame" href="screens/${esc(row.name)}.png" title="Open full size">${body}</a>` : `<div class="frame">${body}</div>`;
+          return `<figure><figcaption><strong>${esc(row.project)}</strong> ${row.outcome ? badge(row.outcome) : ''} ${row.status ? badge(row.status) : ''}${esc(percent(row))}${row.note ? ` <span class="muted">${esc(row.note)}</span>` : ''}${row.status === 'missing' ? ' <span class="muted">(baseline shown)</span>' : ''}</figcaption>${link}</figure>`;
         })
         .join('\n');
       const compared = group
         .filter((row) => row.png && row.baseline && ['changed', 'size-changed', 'not-comparable'].includes(row.status))
         .map(
-          (row) => `<details${row.status === 'not-comparable' ? '' : ' open'}><summary>Baseline and current, ${esc(row.project)}</summary><div class="grid"><figure><figcaption>Baseline (${esc(baselineLabel)})</figcaption>${shot(row.baseline, `Baseline screen of ${slug}, ${row.project}`)}</figure><figure><figcaption>Current</figcaption>${shot(row.png, `Current screen of ${slug}, ${row.project}`)}</figure></div></details>
-${row.status === 'not-comparable' ? '' : `<details><summary>Difference overlay, ${esc(row.project)} (black is unchanged)</summary>${overlay(row)}</details>`}`,
+          (row) => `<details${row.status === 'not-comparable' ? '' : ' open'}><summary>Baseline and current, ${esc(row.project)}</summary><div class="screens"><figure><figcaption>Baseline (${esc(baselineLabel)})</figcaption><div class="frame">${shot(row.baseline, `Baseline screen of ${slug}, ${row.project}`)}</div></figure><figure><figcaption>Current</figcaption><div class="frame">${shot(row.png, `Current screen of ${slug}, ${row.project}`)}</div></figure></div></details>
+${row.status === 'not-comparable' ? '' : `<details><summary>Difference overlay, ${esc(row.project)} (black is unchanged)</summary><div class="frame">${overlay(row)}</div></details>`}`,
         )
         .join('\n');
-      return `<section id="flow-${esc(slug)}" aria-labelledby="h-${esc(slug)}"><h2 id="h-${esc(slug)}">${esc(first.title || slug)} <small>${esc(first.file ?? 'only in the baseline')}</small></h2>
-<div class="grid">${figures}</div>
+      const ran = group.filter((row) => row.file);
+      const attention = group.some((row) => (row.outcome && row.outcome !== 'passed') || ['changed', 'size-changed', 'missing'].includes(row.status));
+      const details = ran.map(observed).join('\n');
+      return `<details class="flow" id="flow-${esc(slug)}"${attention ? ' open' : ''}><summary><h2>${esc((first.title || slug).split(' > ').at(-1))} <span class="muted"><code>${esc(first.file ?? 'only in the baseline')}</code></span></h2>${group.map((row) => `<span>${esc(row.project.replace(/^real-test-/, ''))} ${row.outcome ? badge(row.outcome) : ''}</span>`).join(' ')}</summary><div class="body">
+<div class="screens">${figures}</div>
 ${compared}
-<h3>Observations</h3>
-${group.filter((row) => row.file).map(observed).join('\n') || '<p class="muted">No test of this flow ran in this report.</p>'}
-</section>`;
+${ran.length ? details : '<p class="muted">No test of this flow ran in this report.</p>'}
+</div></details>`;
     })
     .join('\n');
 
+  const OUTCOMES = ['passed', 'failed', 'timedOut', 'interrupted', 'skipped'];
+  const outcomes = Object.fromEntries(OUTCOMES.map((o) => [o, rows.filter((row) => row.outcome === o).length]));
+  const withIssues = rows.filter((row) => issuesOf(row).length).length;
+  const stat = (n, label, cls = '') => `<div class="stat"><b class="${cls}">${n}</b>${label}</div>`;
   const css = [...images].map(([png, name]) => `.${name}{background-image:url(data:image/png;base64,${png.toString('base64')})}`).join('\n');
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>real-test visual report</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>real-test report</title>
 <style>${STYLE}</style><style>${css}</style></head><body>
-<h1>real-test visual report</h1>
-<p>Results: <code>${esc(resultsLabel)}</code>. Baseline: ${baselineLabel ? `<code>${esc(baselineLabel)}</code>` : 'none, so every screen is new'}.</p>
-<table><caption class="muted">Screens by status</caption><thead><tr>${STATUSES.map((s) => `<th scope="col">${s}</th>`).join('')}</tr></thead><tbody><tr>${STATUSES.map((s) => `<td>${counts[s]}</td>`).join('')}</tr></tbody></table>
-<p class="muted">Screens, console errors, failed requests and accessibility violations are observations, not test results: nothing on this page fails the run. axe-core finds only a subset of WCAG issues. Dynamic content (dates, ads, animations, live data) makes a screen differ between runs without a real change.</p>
+<p class="brand">real-test · by Giray Batıtürk</p>
+<h1>Test report</h1>
+<p class="muted">${flows.length} flows · ${projects.map(esc).join(', ')} · results <code>${esc(resultsLabel)}</code> · baseline ${baselineLabel ? `<code>${esc(baselineLabel)}</code>` : 'none, so every screen is new'}${playwrightReport ? ' · <a href="html/index.html">Playwright report</a> (steps, errors, traces)' : ''}</p>
+<div class="stats">
+${stat(outcomes.passed, 'tests passed', 'passed')}
+${stat(outcomes.failed + outcomes.timedOut + outcomes.interrupted, 'tests failed', outcomes.failed + outcomes.timedOut + outcomes.interrupted ? 'failed' : '')}
+${outcomes.skipped ? stat(outcomes.skipped, 'skipped (fixme)', 'skipped') : ''}
+${stat(counts.changed + counts['size-changed'], 'screens changed', counts.changed + counts['size-changed'] ? 'changed' : '')}
+${stat(withIssues, 'tests with findings', withIssues ? 'issue' : '')}
+</div>
+<table><thead><tr><th scope="col">Flow</th>${projects.map((p) => `<th scope="col">${esc(p)}</th>`).join('')}</tr></thead><tbody>
+${overview}
+</tbody></table>
+<p class="muted">Screens by status: ${STATUSES.map((s) => `${s} ${counts[s]}`).join(' · ')}</p>
 ${sections || '<p>No screens: no test of this run used the fixtures.</p>'}
+<p class="note">Screens, console errors, failed requests and accessibility violations are observations, not test results: nothing on this page fails the run. axe-core finds only a subset of WCAG issues. Dynamic content (dates, ads, animations, live data) makes a screen differ between runs without a real change. Click a screen to open it full size.</p>
+<footer class="note">Made with real-test, a skill by Giray Batıtürk · github.com/giraybatiturk/skills</footer>
 </body></html>
 `;
 }
@@ -362,7 +423,7 @@ function main(argv) {
   const counts = Object.fromEntries(STATUSES.map((status) => [status, rows.filter((row) => row.status === status).length]));
   const baselineLabel = baselineDir ? relative(baselineDir) : '';
   const html = path.join(reportDir, 'visual.html');
-  writeFileSync(html, buildPage({ rows, counts, baselineLabel, resultsLabel: relative(path.resolve(file)) }));
+  writeFileSync(html, buildPage({ rows, counts, baselineLabel, resultsLabel: relative(path.resolve(file)), playwrightReport: existsSync(path.join(reportDir, 'html/index.html')) }));
 
   const flows = groupBy(rows, (row) => row.slug).map(([flow, group]) => ({
     flow,
