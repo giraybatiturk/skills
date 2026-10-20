@@ -1,10 +1,10 @@
 ---
 name: real-start
-description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit, check and research requests. Select the smallest Real workflow; skip routing for simple edits or already-approved implementation. (v0.11.0)"
+description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit, check, test and research requests. Select the smallest Real workflow; skip routing for simple edits or already-approved implementation. (v0.12.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.11.0
+  version: 0.12.0
   source: https://github.com/giraybatiturk/skills
 ---
 
@@ -37,9 +37,10 @@ Do not loop between Start and Audit. An Audit handoff that confirms idea-only go
 - **Brainstorm**: no candidate exists yet, or the user wants an idea judged on whether it would work, sell or earn. Invoke `real-brainstorm`.
 - **Plan**: a new feature, change, decision, requirement, or idea that is not approved yet. Invoke `real-plan`.
 - **Audit**: your own product in depth (repo, running app, screens): improve an existing product, inspect what is missing, review a built module or screen, measure performance, or decide the next release. Invoke `real-audit` with the appropriate mode.
-- **Check**: a quick automated scan of a public URL, a site someone else owns (client, prospect, competitor), or an owner-facing one-page report or outreach draft. No code or account access needed. Invoke `real-check`.
+- **Check**: a quick, rule-based scan of a public URL (no AI, read-only), a site someone else owns (client, prospect, competitor), or an owner-facing one-page report or outreach draft. No code or account access needed. Invoke `real-check`.
+- **Test**: persistent end-to-end tests for the key user flows of your own web app (local, staging or a URL you own): an AI explores it, the user approves a plan, Playwright tests stay in the repo, run at desktop and phone width (optionally Firefox and WebKit) and are healed once; the report adds accessibility findings and a visual comparison with the last run; reruns need no model. Neither a public-URL scan (Check) nor an in-depth product review (Audit). Invoke `real-test`.
 - **Research**: the decision depends on current external facts, official documentation, competitor behavior, pricing, policy, or provider limits. Invoke `real-research`.
 
-If the request spans workflows, use this order: research unresolved external facts, brainstorm when no candidate exists, plan the change, implement only after approval, then audit the result. Skip stages whose evidence is already settled.
+If the request spans workflows, use this order: research unresolved external facts, brainstorm when no candidate exists, plan the change, implement only after approval, then audit the result and, when the app runs, test its key flows. Skip stages whose evidence is already settled.
 
 Legacy mapping: `real-grill` and `real-feature-gate` are now `real-plan`; `real-product-audit`, `real-module-audit`, `real-design-audit`, and `real-perf-audit` are modes of `real-audit`.

@@ -2,8 +2,8 @@
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 dest=${1:?Usage: bash scripts/install-local.sh DESTINATION}
-names=(real-start real-brainstorm real-plan real-audit real-check real-research)
-sources=(product/real-start product/real-brainstorm product/real-plan product/real-audit engineering/real-check engineering/real-research)
+names=(real-start real-brainstorm real-plan real-audit real-check real-test real-research)
+sources=(product/real-start product/real-brainstorm product/real-plan product/real-audit engineering/real-check engineering/real-test engineering/real-research)
 legacy=(real-grill real-feature-gate real-product-audit real-module-audit real-design-audit real-design-rules real-perf-audit)
 require_file() {
   if [[ ! -f "$1" ]]; then
@@ -17,6 +17,9 @@ for i in "${!sources[@]}"; do
 done
 for file in check.mjs package.json; do
   require_file "$repo/skills/engineering/real-check/scripts/$file"
+done
+for file in scripts/guard.mjs scripts/summary.mjs scripts/visual.mjs assets/fixtures.ts; do
+  require_file "$repo/skills/engineering/real-test/$file"
 done
 for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context deliverable live-audit; do
   require_file "$repo/skills/product/real-audit/references/$ref.md"
@@ -47,4 +50,4 @@ for i in "${!names[@]}"; do
   ln -s "$repo/skills/${sources[$i]}" "$target"
   test -f "$target/SKILL.md"
 done
-printf 'Installed and verified all six workflows in %s\n' "$dest"
+printf 'Installed and verified all seven workflows in %s\n' "$dest"

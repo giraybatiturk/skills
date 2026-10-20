@@ -19,7 +19,7 @@ For animation, gesture, transition or feedback review, read `motion.md` in this 
    Order of attack: purpose and IA first, then layout and action priority, then the component cascade, then tokens, then the nine dimensions below one by one. Structure before pixels.
    If there's a structural problem higher up, **flag it first** instead of drowning in pixel/token detail. Every finding: `file:line`, dimension, priority (High/Medium/Low), critical-blocker flag when applicable, the applicable DESIGN.md or baseline section violated, one-sentence problem. Describe the defect and its mechanism; do not design the correction.
 3. **Adversarially verify** every finding you're not sure of: actually read the line; kill false positives (is the hex in a comment, is it a `var(--*)`, is the translate an active state or a hover, is the native element a slot or a real control).
-4. Report verified findings and coverage. Score only under the conditions below.
+4. Report verified findings and coverage. Mark each visual finding on its capture with the annotated evidence method in `reporting.md`, using the boxes measured above. Score only under the conditions below.
 5. **Report; do not design the correction.** Severity does not authorize edits, and an audit does not produce the replacement layout, component, token or colour choice. State what breaks, against which rule, and the observable outcome that would show it resolved. If the user separately authorizes fixes, do that work as a labelled task outside the findings and compare measured coverage and screenshots before/after.
 
 ## Dimensions

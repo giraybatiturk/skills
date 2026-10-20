@@ -23,7 +23,7 @@ import { parseArgs } from 'node:util';
 const require = createRequire(import.meta.url);
 
 const USAGE = 'Usage: node check.mjs <http(s)://url> [--lang tr|en] [--brand "Name <email>"] [--outreach] [--control] [--out DIR]';
-const USER_AGENT_TOKEN = 'real-check/0.11 (+https://github.com/giraybatiturk/skills)';
+const USER_AGENT_TOKEN = 'real-check/0.12 (+https://github.com/giraybatiturk/skills)';
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const BROKEN_STATUSES = new Set([404, 410, 500, 502, 504]);
 const REFUSED_STATUSES = new Set([401, 403, 429, 503]);

@@ -1,7 +1,7 @@
 {
   "name": "giraybatiturk-skills",
-  "version": "0.11.0",
-  "description": "Six connected workflows for product brainstorming, planning, auditing, checking and research. Supports natural-language selection with progressively loaded modes.",
+  "version": "0.13.0",
+  "description": "Seven connected workflows for product brainstorming, planning, auditing, checking, testing and research. Supports natural-language selection with progressively loaded modes.",
   "author": {
     "name": "Giray Batıtürk",
     "url": "https://giraybatiturk.com"
@@ -15,6 +15,7 @@
     "research",
     "brainstorming",
     "checking",
+    "testing",
     "qa"
   ],
   "skills": [
@@ -23,6 +24,7 @@
     "./skills/product/real-plan",
     "./skills/product/real-audit",
     "./skills/engineering/real-check",
+    "./skills/engineering/real-test",
     "./skills/engineering/real-research"
   ],
   "license": "MIT"
