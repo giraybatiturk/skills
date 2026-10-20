@@ -30,7 +30,7 @@ Not the other two. `real-check` scans any public URL with fixed rules, no AI, ab
 
 2. **Preflight.**
    - Ask once, for every host: may the user test this app, and is it production? `localhost`, `127.0.0.1`, `*.localhost` and private addresses only make "non-production" the suggested answer: port-forwards, tunnels and internal production apps live there too. Treat no answer as production. Prefer a non-production target. If the user's organisation or client restricts external tools or sending data to model providers, ask before going on. Stop if the user may not test the target.
-   - Needs Node 20+, a shell and Chromium. If the client has no shell (for example the Claude app) say exactly that and stop; do not fake results.
+   - Needs Node 20+, a shell and Chromium, plus Firefox and WebKit with `--browsers`. If the client has no shell (for example the Claude app) say exactly that and stop; do not fake results.
    - Playwright: reuse the existing `playwright.config.*` and `@playwright/test`. Otherwise, with the user's consent, `npm install -D @playwright/test @axe-core/playwright`, then `PLAYWRIGHT_SKIP_BROWSER_GC=1 npx playwright install chromium` (both download from the network), then write `playwright.config.ts` (`<origin>` is the target's origin, `<out>` as a relative path; run Playwright from the project root):
      ```ts
      import { existsSync } from 'node:fs';

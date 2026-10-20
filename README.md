@@ -68,6 +68,7 @@ Each skill uploads as its own zip; the app does not accept a multi-skill bundle.
 To build the zips from a checkout instead:
 
 ```bash
+# Needs jq and zip.
 bash scripts/build-zips.sh
 ```
 
@@ -89,7 +90,11 @@ The supported installation is the complete seven-skill bundle. Plan depends on A
 
 `real-test` needs Node 20+, a shell, and `@playwright/test` with Chromium; with your consent it installs `@playwright/test` and `@axe-core/playwright` into your project as dev dependencies, downloads Chromium (all from the network; Firefox and WebKit too with `--browsers`), and runs `npx playwright init-agents` (Playwright's own planner, generator and healer agents) there; that command overwrites an existing `.mcp.json`, so the skill backs it up and merges your other servers back. It runs on your machine inside your coding agent (your subscription, no API key). Credentials go only to the app under test: you log in yourself once, and no plan, test or prompt contains them. Test data, page content, snapshots and test code go to the app under test and pass through your agent's model provider; there is no telemetry, and the npm and Chromium downloads (Firefox and WebKit too with `--browsers`) are the only other traffic. After installing the agents, restart the session once so the client loads them. By default tests stop before the final submit of any write (send, delete, pay, invite, publish); with `--allow-writes` on a non-production target they do submit, with fake data only, and those tests are tagged `@writes` and skip themselves when pointed at another origin. Every run also writes a self-contained `visual.html` next to the report (a screenshot per flow and project, console and network errors, axe-core findings, and a comparison with the last run); these are observations and never fail a test, and the screens stay on disk, not with the model. Optionally the skill writes a GitHub Actions workflow that reruns the tests without a model; CI has no login session, so login flows fail there. Where there is no shell, it stops and says so.
 
-`real-audit` is instructions plus one optional script, `skills/product/real-audit/scripts/annotate-evidence.mjs`, that draws the marked screenshots of its evidence method. It needs Node 20+ and uses the Playwright and Chromium install of `real-check` next to it (or one in the current folder). It opens its own headless browser on the URLs in its spec (the page loads its own resources and counts as a visit) and writes only to the folder you give it. Without it, the audit keeps the original capture and describes the marked area in words.
+Three skills ship scripts:
+
+- `real-check`: `skills/engineering/real-check/scripts/check.mjs`, the scan itself.
+- `real-test`: `skills/engineering/real-test/scripts/guard.mjs`, `summary.mjs` and `visual.mjs`, plus `assets/fixtures.ts`, the observations fixture copied into your tests folder.
+- `real-audit`: `skills/product/real-audit/scripts/annotate-evidence.mjs`, which draws the marked screenshots of its evidence method. It needs Node 20+ and uses the Playwright and Chromium install of `real-check` next to it (or one in the current folder). It opens its own headless browser on the URLs in its spec (the page loads its own resources and counts as a visit) and writes only to the folder you give it. Without it, the audit keeps the original capture and describes the marked area in words.
 
 The other workflows are instructions only.
 

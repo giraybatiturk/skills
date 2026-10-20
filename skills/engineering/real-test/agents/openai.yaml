@@ -1,6 +1,6 @@
 interface:
   display_name: "Test"
-  short_description: "Plan, generate, run and heal Playwright tests for your own web app"
+  short_description: "Plan, generate, run and heal Playwright tests for your own web app, with accessibility findings, visual comparison with the last run and optional Firefox/WebKit"
   default_prompt: "Use $real-test to plan, generate and run Playwright tests for this web app."
 policy:
   allow_implicit_invocation: true
