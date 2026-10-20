@@ -6,17 +6,21 @@ Seven connected workflows for deciding what to build, proving what exists, and i
 
 ```mermaid
 flowchart LR
-  S["real-start<br/>where do I begin?"] --> B["real-brainstorm<br/>idea still open"]
-  S --> P["real-plan<br/>idea chosen"]
+  S["<b>real-start</b><br/>where do I begin?"] --> B["<b>real-brainstorm</b><br/>idea still open"]
+  S --> P["<b>real-plan</b><br/>idea chosen"]
   B --> P
-  R["real-research<br/>primary sources"] -.-> B
+  R["<b>real-research</b><br/>primary sources"] -.-> B
   R -.-> P
   P --> K["build"]
-  K --> T["real-test<br/>flow tests"]
-  K --> A["real-audit<br/>in-depth review"]
+  K --> T["<b>real-test</b><br/>flow tests"]
+  K --> A["<b>real-audit</b><br/>in-depth review"]
   T -.-> A
   A -.-> T
-  C["real-check<br/>any public URL"] -.-> T
+  C["<b>real-check</b><br/>any public URL"] -.-> T
+  classDef skill fill:#1f4fd1,stroke:#0b2a80,stroke-width:2px,color:#ffffff
+  classDef step fill:#e5e7eb,stroke:#6b7280,color:#111827
+  class S,B,P,R,T,A,C skill
+  class K step
 ```
 
 Solid arrows are the usual path; dashed arrows are optional handoffs. Every workflow also works on its own: start with `real-brainstorm` when the idea is open, with `real-plan` when it is chosen, or let `real-start` pick. Reports land in `docs/brainstorm/`, `docs/plans/`, `docs/audits/`, `docs/research/`, `real-test-reports/` and the `real-check` output folder.
