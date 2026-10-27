@@ -1,0 +1,159 @@
+#!/bin/sh
+# real-hooks-managed
+# Test coverage check for the staged diff.
+# A new page or a new user action needs a test that mentions its route path or its name.
+# The test can be in the same commit or already in the repo.
+# Config: git config real.tests.<key> (can repeat) or the file .real-tests in the repo root.
+# Keys: pages, actions, tests, ignore, enabled. Bypass: REAL_ALLOW_UNTESTED=1.
+
+set -f
+
+if [ "${REAL_ALLOW_UNTESTED:-}" = 1 ]; then
+  echo "real: REAL_ALLOW_UNTESTED=1 is set. The test coverage check is skipped." >&2
+  exit 0
+fi
+
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+cd "$top" || exit 0
+
+TAB=$(printf '\t')
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/real-coverage.XXXXXX") || exit 0
+trap 'rm -rf "$tmp"' EXIT
+
+cfg() { # $1 = key, $2 = default globs (space separated)
+  v=$(git config --get-all "real.tests.$1" 2>/dev/null)
+  if [ -z "$v" ] && [ -f .real-tests ]; then
+    v=$(sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" .real-tests | sed 's/[[:space:]]*$//')
+  fi
+  if [ -z "$v" ]; then v=$(printf '%s\n' $2); fi
+  printf '%s\n' "$v"
+}
+
+[ "$(cfg enabled true)" = false ] && exit 0
+
+# Each pattern file holds two forms of every glob: ** as *, and **/ removed.
+mkpat() { # $1 = name, $2 = globs (newline separated)
+  printf '%s\n' "$2" | sed 's|\*\*|*|g' > "$tmp/$1.pat"
+  printf '%s\n' "$2" | sed 's|\*\*/||g; s|\*\*|*|g' >> "$tmp/$1.pat"
+}
+mkpat pages "$(cfg pages 'app/**/page.tsx app/**/page.jsx app/**/page.ts app/**/page.js src/app/**/page.tsx src/app/**/page.jsx src/app/**/page.ts src/app/**/page.js pages/**/*.tsx pages/**/*.jsx pages/**/*.ts pages/**/*.js src/pages/**/*.tsx src/pages/**/*.jsx src/pages/**/*.ts src/pages/**/*.js')"
+mkpat actions "$(cfg actions 'app/**/route.ts app/**/route.js app/**/route.tsx src/app/**/route.ts src/app/**/route.js pages/api/** src/pages/api/** **/actions.ts **/actions.tsx **/actions.js **/*.action.ts **/*.action.js app/**/actions/** src/app/**/actions/**')"
+mkpat tests "$(cfg tests '**/*.spec.ts **/*.spec.tsx **/*.spec.js **/*.spec.jsx **/*.test.ts **/*.test.tsx **/*.test.js **/*.test.jsx **/*.e2e.ts e2e/** tests/** __tests__/** cypress/**')"
+mkpat ignore "$(cfg ignore '**/node_modules/** **/*.d.ts pages/_* src/pages/_* **/_app.* **/_document.*')"
+
+matches() { # $1 = path, $2 = pattern file name
+  while IFS= read -r pat; do
+    [ -z "$pat" ] && continue
+    case $1 in $pat) return 0 ;; esac
+  done < "$tmp/$2.pat"
+  return 1
+}
+
+route_of() { # $1 = file path. Prints the route path.
+  r=$(printf '%s' "$1" | sed -E \
+    -e 's#^src/##' \
+    -e 's#^(app|pages|routes)/##' \
+    -e 's#(^|/)(page|route|index|\+page|\+server|\+page\.server)\.[A-Za-z.]+$##' \
+    -e 's#\.[A-Za-z]+$##' \
+    -e 's#(^|/)\([^/]*\)(/|$)#\1#g' \
+    -e 's#/+$##')
+  printf '/%s\n' "$r"
+}
+
+needle_of() { # $1 = route path. Cut at the first dynamic segment.
+  n=$(printf '%s' "$1" | sed 's#\[.*##')
+  [ -z "$n" ] && n=/
+  printf '%s\n' "$n"
+}
+
+names_of() { # $1 = status, $2 = file. Prints exported function names that the diff adds.
+  if [ "$1" = A ]; then
+    git show ":$2" 2>/dev/null
+  else
+    git diff --cached -U0 --no-color -- "$2" | grep '^+' | grep -v '^+++'
+  fi | sed -nE \
+      -e 's/^\+?[[:space:]]*export[[:space:]]+(async[[:space:]]+)?function[[:space:]]+([A-Za-z_$][A-Za-z0-9_$]*).*/\2/p' \
+      -e 's/^\+?[[:space:]]*export[[:space:]]+const[[:space:]]+([A-Za-z_$][A-Za-z0-9_$]*)[[:space:]]*=.*/\1/p'
+}
+
+items="$tmp/items"
+: > "$items"
+add_item() { # kind file label needle mode
+  printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5" >> "$items"
+}
+
+git -c core.quotepath=false diff --cached --name-status --diff-filter=AM 2>/dev/null > "$tmp/staged"
+while IFS="$TAB" read -r st f; do
+  [ -z "$f" ] && continue
+  matches "$f" ignore && continue
+  matches "$f" tests && continue
+  if matches "$f" actions; then
+    base=${f##*/}
+    case "$base:$f" in
+      route.*:*|+server.*:*|*:pages/api/*|*:src/pages/api/*)
+        route=$(route_of "$f"); needle=$(needle_of "$route")
+        if [ "$st" = A ]; then
+          add_item action "$f" "$route" "$needle" f
+        else
+          for m in $(names_of "$st" "$f" | grep -E '^(GET|POST|PUT|PATCH|DELETE)$'); do
+            add_item action "$f" "$m $route" "$needle" f
+          done
+        fi
+        ;;
+      *)
+        for name in $(names_of "$st" "$f"); do
+          add_item action "$f" "$name" "$name" w
+        done
+        ;;
+    esac
+    continue
+  fi
+  if [ "$st" = A ] && matches "$f" pages; then
+    route=$(route_of "$f"); needle=$(needle_of "$route")
+    add_item page "$f" "$route" "$needle" f
+  fi
+done < "$tmp/staged"
+
+[ -s "$items" ] || exit 0
+
+covered() { # $1 = needle, $2 = mode (f fixed string, w whole word)
+  if [ "$1" = / ]; then
+    files=$(git grep --cached -I -l -E "[\"'\`]/[\"'\`]" 2>/dev/null)
+  elif [ "$2" = w ]; then
+    files=$(git grep --cached -I -l -w -F -e "$1" 2>/dev/null)
+  else
+    files=$(git grep --cached -I -l -F -e "$1" 2>/dev/null)
+  fi
+  [ -z "$files" ] && return 1
+  printf '%s\n' "$files" > "$tmp/hits"
+  while IFS= read -r hit; do
+    matches "$hit" tests && return 0
+  done < "$tmp/hits"
+  return 1
+}
+
+: > "$tmp/missing"
+while IFS="$TAB" read -r kind file label needle mode; do
+  if ! covered "$needle" "$mode"; then
+    printf '  %-6s %s (%s)\n' "$kind" "$file" "$label" >> "$tmp/missing"
+  fi
+done < "$items"
+
+[ -s "$tmp/missing" ] || exit 0
+
+{
+  echo "real: commit blocked. These pages and actions have no test:"
+  cat "$tmp/missing"
+  cat <<'MSG'
+
+A test must mention the route path or the action name. It can be in this commit or already in the repo.
+How to fix:
+  1. Run real-test to generate Playwright specs for the key flows:   /real-test <url>
+     (real-test needs your app to run. It writes the specs to tests/real-test/.)
+  2. Or write a test by hand that mentions the route path or the action name.
+  3. Stage the new tests and commit again.
+To skip this check one time, run:   REAL_ALLOW_UNTESTED=1 git commit ...
+To change the globs, edit .real-tests or use: git config real.tests.pages '<glob>'
+MSG
+} >&2
+exit 1

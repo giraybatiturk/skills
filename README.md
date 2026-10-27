@@ -116,6 +116,15 @@ Open a new session after installation. The public list should contain exactly `r
 
 The supported installation is the complete seven-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
 
+## Hooks
+
+The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect your repo while you and your agent work.
+
+- Git hooks block a commit on `main`, a new page or action with no test, and a token or private name in a push.
+- Agent hooks for Claude Code and Codex guard dangerous commands, secret files and weak tests. They run a done gate before the agent stops.
+
+Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
+
 ## Dependencies
 
 `real-check` needs Node 20+ and downloads Chromium (through Playwright) on first run. Where installing is not permitted, it stops and says so instead of faking a result.

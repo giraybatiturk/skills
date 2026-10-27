@@ -1,0 +1,100 @@
+#!/bin/sh
+# real-hooks-managed
+# Git pre-push hook of the real skills. It scans the pushed commits only.
+# 1. Token scan: always on. Set "git config real.tokenScan false" to turn it off.
+# 2. Private pattern scan: only when the repo is marked public.
+#    Mark a repo public with "git config real.public true" or with an empty file .real-public in the repo root.
+#    The patterns come from a file outside the repo. Default: ${XDG_CONFIG_HOME:-$HOME/.config}/real/private-patterns.txt
+#    Change the file with REAL_PRIVATE_PATTERNS=<file> or "git config real.patternsFile <file>".
+#    One pattern for each line. A line is a fixed string and the match ignores case.
+#    A line that starts with "re:" is an extended regular expression. A line that starts with "#" is a comment.
+# Bypass: REAL_ALLOW_PRIVACY=1.
+
+remote=$1
+zero_check() { case $1 in *[!0]*) return 1 ;; *) return 0 ;; esac; }
+
+top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+
+public=no
+[ "$(git config --get real.public 2>/dev/null)" = true ] && public=yes
+[ -f "$top/.real-public" ] && public=yes
+tokens=yes
+[ "$(git config --get real.tokenScan 2>/dev/null)" = false ] && tokens=no
+
+if [ "$public" = no ] && [ "$tokens" = no ]; then exit 0; fi
+
+patfile=${REAL_PRIVATE_PATTERNS:-$(git config --get real.patternsFile 2>/dev/null)}
+[ -z "$patfile" ] && patfile=${XDG_CONFIG_HOME:-$HOME/.config}/real/private-patterns.txt
+
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/real-push.XXXXXX") || exit 0
+trap 'rm -rf "$tmp"' EXIT
+: > "$tmp/text"
+
+while read -r lref lsha rref rsha; do
+  [ -z "$lsha" ] && continue
+  zero_check "$lsha" && continue
+  if zero_check "$rsha"; then
+    git log --format=%B -p -U0 --no-color "$lsha" --not --remotes="$remote" 2>/dev/null >> "$tmp/text"
+  else
+    git log --format=%B -p -U0 --no-color "$rsha..$lsha" 2>/dev/null >> "$tmp/text" \
+      || git log --format=%B -p -U0 --no-color "$lsha" --not --remotes="$remote" 2>/dev/null >> "$tmp/text"
+  fi
+done
+# Keep added lines, commit messages and file names. Drop removed lines and diff metadata.
+grep -v -e '^-' -e '^diff --git' -e '^index ' -e '^@@' "$tmp/text" > "$tmp/scan" || true
+
+hits=0
+
+if [ "$tokens" = yes ]; then
+  while IFS= read -r row; do
+    label=${row%% => *}
+    re=${row#* => }
+    if grep -E -q -- "$re" "$tmp/scan"; then
+      echo "real: push blocked. The pushed commits match a token pattern: $label." >&2
+      hits=$((hits + 1))
+    fi
+  done <<'TOKENS'
+GitHub token => gh[pousr]_[A-Za-z0-9]{30,}
+GitHub fine-grained token => github_pat_[A-Za-z0-9_]{20,}
+AWS access key id => AKIA[0-9A-Z]{16}
+Slack token => xox[baprs]-[A-Za-z0-9-]{10,}
+API key with the sk- prefix => sk-[A-Za-z0-9_-]{20,}
+Stripe live key => sk_live_[A-Za-z0-9]{16,}
+Google API key => AIza[0-9A-Za-z_-]{35}
+GitLab token => glpat-[A-Za-z0-9_-]{20,}
+Private key block => -----BEGIN [A-Z ]*PRIVATE KEY-----
+JSON web token => eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}
+TOKENS
+fi
+
+if [ "$public" = yes ]; then
+  if [ -r "$patfile" ]; then
+    while IFS= read -r pat; do
+      case $pat in ''|'#'*) continue ;; esac
+      case $pat in
+        re:*) found=$(grep -E -i -- "${pat#re:}" "$tmp/scan" | head -n 3) ;;
+        *)    found=$(grep -F -i -- "$pat" "$tmp/scan" | head -n 3) ;;
+      esac
+      if [ -n "$found" ]; then
+        echo "real: push blocked. The repo is public and the pushed commits match a private pattern:" >&2
+        printf '%s\n' "$found" | cut -c1-100 | sed 's/^/    /' >&2
+        hits=$((hits + 1))
+      fi
+    done < "$patfile"
+  else
+    echo "real: warning: the repo is public but the pattern file '$patfile' is not readable. The private pattern scan did not run." >&2
+  fi
+fi
+
+if [ "$hits" -gt 0 ]; then
+  if [ "${REAL_ALLOW_PRIVACY:-}" = 1 ]; then
+    echo "real: REAL_ALLOW_PRIVACY=1 is set. The push is allowed." >&2
+    exit 0
+  fi
+  cat >&2 <<MSG
+real: $hits privacy hit(s). Remove the text from the commits, then push again.
+To allow this one push, run:   REAL_ALLOW_PRIVACY=1 git push ...
+MSG
+  exit 1
+fi
+exit 0
