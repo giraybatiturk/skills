@@ -1,10 +1,10 @@
 ---
 name: real-start
-description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit, check, test and research requests. Select the smallest Real workflow. Do not route simple edits or approved implementation. (v0.12.0)"
+description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit, check, test, measure and research requests. Select the smallest Real workflow. Do not route simple edits or approved implementation. (v0.14.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.12.0
+  version: 0.14.0
   source: https://github.com/giraybatiturk/skills
 ---
 
@@ -67,6 +67,9 @@ Do not loop between Start and Audit.
   - Reruns need no model.
   - It is not a public-URL scan (Check). It is not an in-depth product review (Audit).
   - Start `real-test`.
+- **Measure**: a change has shipped, and the user asks if it worked, what the result is after release, or what an A/B outcome says. Start `real-measure`.
+  - "Did this change work?" goes to Measure. A request for what to improve stays in Audit.
+  - Release has no skill. It is a step of the user.
 - **Research**: the decision depends on current external facts, official documentation, competitor behavior, pricing, policy, or provider limits. Start `real-research`.
 
 If the request spans workflows, use this order:
@@ -76,6 +79,7 @@ If the request spans workflows, use this order:
 4. Implement, only after approval.
 5. Audit the result.
 6. When the app runs, test its key flows.
+7. After release, measure the result.
 
 Skip each stage whose evidence is already settled.
 
