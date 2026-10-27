@@ -24,6 +24,7 @@ done
 for ref in design-rules orchestration product module design performance security quality motion reporting monetization product-context deliverable live-audit; do
   require_file "$repo/skills/product/real-audit/references/$ref.md"
 done
+require_file "$repo/skills/product/real-plan/scripts/real-contract.sh"
 for ref in discovery feature-gate contract; do
   require_file "$repo/skills/product/real-plan/references/$ref.md"
 done

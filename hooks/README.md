@@ -72,6 +72,8 @@ For Codex, copy `hooks/codex/hooks.example.json` to `~/.codex/hooks.json` or to 
 
 A contract is the work order of one agent task. The `real-plan` skill writes it in its contract mode (`skills/product/real-plan/references/contract.md`). The hooks above enforce it. `scripts/real-contract.sh` manages it.
 
+- **How the agent finds the script.** The agent runs `sh <skill>/scripts/real-contract.sh <command>`, where `<skill>` is the folder of the `real-plan` skill. This small script looks for `scripts/real-contract.sh` in this order: `$REAL_SKILLS_HOME`, the repo that holds the skill folder, `$CLAUDE_PLUGIN_ROOT`, the `real.skillsHome` git config, then `PATH`. A symlink install, a plugin install and a local checkout need no setup. `scripts/install-hooks.sh` sets `real.skillsHome` in the local git config of the repo. If you copy the skill folder alone (for example a zip upload), keep that setting or set `REAL_SKILLS_HOME`.
+
 - **Where.** The active contract is `.real/contract.md` in the worktree. It is local. Do not commit it. Add `.real/` to `.git/info/exclude` or to the `.gitignore` of the repo. `scripts/real-contract.sh new` warns when `.real/` is not ignored. Each worktree has its own contract.
 - **Format.** Three header lines (`Task`, `Status`, `Owner`) and 7 sections: OBJECTIVE, CONTEXT, SCOPE, DO NOT TOUCH, DEPENDENCIES, EXPECTED OUTPUT, DONE WHEN. SCOPE and DO NOT TOUCH hold one path or glob for each bullet. `*` also matches `/`. A glob that ends in `/` means the whole folder. DO NOT TOUCH wins over SCOPE.
 - **Status.** `draft` is not enforced. `active` is enforced. `done` closes the contract. The user sets `active` with `scripts/real-contract.sh approve`.

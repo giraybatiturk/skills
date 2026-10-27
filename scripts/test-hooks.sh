@@ -79,7 +79,7 @@ wf() { mkdir -p "$(dirname "$R/$1")"; printf '%s\n' "$2" > "$R/$1"; }
 
 # ---------- static checks ----------
 section "static checks"
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/real-contract.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/real-contract.sh "$ROOT"/skills/product/real-plan/scripts/real-contract.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
   if sh -n "$f" 2>/dev/null; then ok; else bad "syntax: $f"; fi
 done
 for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
@@ -293,6 +293,51 @@ expect_silent "silent when core.hooksPath is the installed path"
 git -C "$R" config core.hooksPath "$TMP/ss/other"
 run "$CL/session-start.sh" "$J"
 has "warns when core.hooksPath changed" "$OUT" "changed"
+
+# ---------- contract script finder (skill folder) ----------
+section "real-contract.sh finder in the skill folder"
+SHIM=$ROOT/skills/product/real-plan/scripts/real-contract.sh
+[ -x "$SHIM" ] && ok || bad "the finder script is not executable"
+# 1. A symlinked skill folder, like the one that install-local.sh makes. No config, no variable.
+mkdir -p "$TMP/skills-home"
+ln -s "$ROOT/skills/product/real-plan" "$TMP/skills-home/real-plan"
+mkrepo feature
+git -C "$R" config --local --unset real.skillsHome
+(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$TMP/skills-home/real-plan/scripts/real-contract.sh" new via-link >/dev/null 2>&1) && ok || bad "the finder must work from a symlinked skill folder"
+[ -f "$R/.real/contract.md" ] && ok || bad "the finder (symlink) wrote no contract"
+eq "the finder passes the arguments" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-link"
+# 2. A copied skill folder, with no repo around it. It needs real.skillsHome, REAL_SKILLS_HOME or the plugin root.
+mkdir -p "$TMP/copy"
+cp -R "$ROOT/skills/product/real-plan" "$TMP/copy/real-plan"
+COPY=$TMP/copy/real-plan/scripts/real-contract.sh
+mkrepo feature
+RC=0; ERR=$(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT git config --local --unset real.skillsHome; cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$COPY" show 2>&1 >/dev/null) || RC=$?
+eq "a copied folder with no setup exits with 3" "$RC" "3"
+has "the error names REAL_SKILLS_HOME" "$ERR" "REAL_SKILLS_HOME"
+has "the error names install-hooks.sh" "$ERR" "install-hooks.sh"
+(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$COPY" new via-var >/dev/null 2>&1) && bad "must not write a contract" || ok
+(cd "$R" && REAL_SKILLS_HOME=$ROOT sh "$COPY" new via-var >/dev/null 2>&1) && ok || bad "REAL_SKILLS_HOME must work"
+eq "REAL_SKILLS_HOME runs the script" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-var"
+rm -rf "$R/.real"
+(cd "$R" && env -u REAL_SKILLS_HOME CLAUDE_PLUGIN_ROOT=$ROOT sh "$COPY" new via-plugin >/dev/null 2>&1) && ok || bad "CLAUDE_PLUGIN_ROOT must work"
+eq "CLAUDE_PLUGIN_ROOT runs the script" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-plugin"
+rm -rf "$R/.real"
+sh "$ROOT/scripts/install-hooks.sh" "$R" >/dev/null
+eq "install-hooks sets real.skillsHome" "$(git -C "$R" config --local real.skillsHome)" "$(cd "$ROOT" && pwd -P)"
+(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$COPY" new via-config >/dev/null 2>&1) && ok || bad "real.skillsHome must work"
+eq "real.skillsHome runs the script" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-config"
+sh "$ROOT/scripts/install-hooks.sh" --uninstall "$R" >/dev/null
+[ -z "$(git -C "$R" config --local real.skillsHome || true)" ] && ok || bad "uninstall did not unset real.skillsHome"
+out=$(sh "$ROOT/scripts/install-hooks.sh" --print "$R")
+has "--print mentions real.skillsHome" "$out" "real.skillsHome"
+[ -z "$(git -C "$R" config --local real.skillsHome || true)" ] && ok || bad "--print must not set real.skillsHome"
+# 3. The finder never runs itself in a loop, and the doc has no bare script path.
+mkdir -p "$TMP/onpath"
+cp "$SHIM" "$TMP/onpath/real-contract.sh"
+RC=0; (cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT PATH="$TMP/onpath:$PATH" sh "$TMP/onpath/real-contract.sh" show >/dev/null 2>&1) || RC=$?
+eq "the finder skips itself on PATH" "$RC" "3"
+if grep -n 'scripts/real-contract.sh' "$ROOT/skills/product/real-plan/references/contract.md" | grep -v '<skill>/scripts/real-contract.sh' | grep -q .; then bad "contract.md has a bare scripts/real-contract.sh path"; else ok; fi
+grep -q 'real-hooks-managed' "$SHIM" && bad "the finder must not carry the hook marker" || ok
 
 # ---------- contract script ----------
 section "real-contract.sh"
@@ -1121,6 +1166,8 @@ EOF
   run "$CG" "$(cbj 'echo hi > $HOME/x')" REAL_ASK_MODE=deny; expect_allow "a target with a variable is not guessed"
   run "$CG" "$(cbj 'echo hi > other.txt && echo yes > src/feature/ok.txt')" REAL_ASK_MODE=deny; expect_block "the first target of two is outside SCOPE"
   run "$CG" "$(cbj 'sh scripts/real-contract.sh approve')"; expect_ask "an agent that runs approve is asked"
+  run "$CG" "$(cbj 'sh ~/.claude/skills/real-plan/scripts/real-contract.sh approve')"; expect_ask "approve through the skill folder is asked"
+  run "$CG" "$(cbj 'sh /x/skills/product/real-plan/scripts/real-contract.sh add-scope a.txt')" REAL_ASK_MODE=deny; expect_block "add-scope through the skill folder is blocked in deny mode"
   run "$CG" "$(cbj 'real-contract.sh add-scope other.txt')" REAL_ASK_MODE=deny; expect_block "add-scope is blocked in deny mode"
   run "$CG" "$(cbj 'sh scripts/real-contract.sh report')"; expect_allow "the report command is allowed"
   run "$CG" "$(cbj 'REAL_ALLOW_SCOPE=1 touch other.txt')"; expect_block "bypass variable set in the command"
