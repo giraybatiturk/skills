@@ -10,3 +10,8 @@ gate.max-retries = 2
 # Formatter and syntax check of the edited file only. {file} is the path of the file.
 # format.cmd = npx prettier --write {file}
 # check.cmd = node --check {file}
+
+# The UI before and after loop (real-ui-track.sh, real-ui-stop.sh, real-shot.mjs). It does nothing until ui.url is set.
+# ui.url = http://127.0.0.1:5173/
+# ui.globs = *.tsx,*.jsx,*.css,*.scss,*.html,*.vue,*.svelte
+# ui.target-min = 40

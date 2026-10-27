@@ -172,6 +172,23 @@ Not the other two. `real-check` scans any public URL with fixed rules, no AI, ab
 
    Done when the user has answered, and `.github/workflows/real-test.yml` exists if the answer was yes.
 
+## real-shot mode
+
+Use this mode for one UI remark on an app that already runs, such as "make the header bigger". It needs no test setup, no plan and no approval.
+
+1. Before the first edit of the task, run `node <skill>/scripts/real-shot.mjs --url <url> --tag <tag> --baseline`. The tag names the task.
+2. Make the smallest change that answers the remark. Say what you changed in one line.
+3. At the end of each UI turn, run the same command with `--after`. It takes the shots again and compares them with the baseline.
+4. Give the user the link. Run the `show` command of the output, or `real-show.sh` when `show` is null. Report the `lines` of the output, at most 4.
+
+If the remark is not clear, make the most likely change and show it. Do not ask first. On macOS, start the command with `taskpolicy -c background`. On Linux, start it with `nice`.
+
+- Needs: Playwright, from the project or from the `real-check` install next to this skill, and Chromium. Without them, the command exits with code 4 and prints the install command.
+- Output: `<root>/.real/shots/<tag>/` holds `before-<w>.png`, `before.json`, `after-<w>.png`, `after.json` and `compare.html`. After a successful `--after` run, `<root>/.real/ui-shot` holds the start time of the capture. Add `.real/` to `.git/info/exclude`.
+- Hooks: with `ui.url` in `.real-hooks`, `real-ui-track.sh` marks each UI edit. `real-ui-stop.sh` blocks the stop once for each UI edit that has no `--after` run. See `hooks/README.md`.
+- Target size: `ui.target-min` sets the smallest touch target in px. Default: 40.
+- Limits: web only. A page with a clock, an advert or live data changes pixels without a real change. The numbers are checks, not proof.
+
 ## Safety
 
 Standing rules. Put them into every brief to the planner, generator and healer, say in each whether writes are allowed (non-production and `--allow-writes`) or not, and keep to them yourself:
