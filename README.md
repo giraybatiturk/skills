@@ -126,6 +126,8 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - `real-show.sh --open` opens a folder or a file on macOS only. A web page gets a link and is never opened.
 - The turn log records the start, the request and the end of each agent turn. At the end of a turn of 120 s or more, `notify.sh` sends a banner. The banner shows the `STATE:` line of the last reply.
 - `/real-status` prints at most 8 lines: the branch, the contract, the last commands, the last turn and the background jobs. It makes no model call. `scripts/real-status.sh` runs in any shell.
+- `/real-ship` commits, pushes and opens the PR or MR in separate steps. It refuses on `main` and never merges. Read [docs/real-ship.md](docs/real-ship.md).
+- `scripts/real-ship.sh` never uses `git add -A`, never forces a push and never skips a hook. The command template is `commands/real-ship.md`.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 
