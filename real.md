@@ -95,6 +95,8 @@ These files follow ASD-STE100 style. See `docs/ste-glossary.md`.
 <!-- Why: Independent views find errors that one agent misses. -->
 
 ## Skills
+- Start all product work with `real-start`. It selects the correct real skill.
+<!-- Why: One entry point keeps the choice of skill consistent. -->
 - For feature work, use `real-plan`.
 - For the UI baseline, use `real-audit` `references/design-rules.md`.
 - For model tiers and agents, read `real/models-and-orchestration.md`.
