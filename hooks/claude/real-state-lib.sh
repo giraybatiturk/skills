@@ -1,6 +1,6 @@
 #!/bin/sh
 # real-hooks-managed
-# State helpers for the turn log, the Stop banner and scripts/real-status.sh. Source this file. Do not run it.
+# State helpers for the turn log, the Stop banner, the context hook and scripts/real-status.sh. Source this file. Do not run it.
 # It reads no standard input, so a script that already reads its own input can source it.
 # State folder: ${XDG_STATE_HOME:-$HOME/.local/state}/real/turn/<key>/ where <key> is "<crc>-<length>" (cksum) of the repo root.
 #   root          the absolute repo root (or the working folder outside git). It proves who owns the folder.
@@ -12,6 +12,12 @@
 #   status_prompt epoch seconds, written at UserPromptSubmit of a /real-status prompt. A real prompt removes it.
 #                 While it is set, a Stop with no STATE line changes no file. The banner counts from the later of turn_start and status_prompt.
 # The layout is stable. Later hooks read these files. Every file is one line, except jobs.
+# Handoff file: ${XDG_STATE_HOME:-$HOME/.local/state}/real/handoff/<key>.json, one JSON line, with the same <key>. rs_handoff prints the path.
+#   Keys, in this order: root, branch, last_request, turn_start, turn_end, state_line, clean_end.
+#   real-turn-log.sh writes it at UserPromptSubmit and at Stop. real-context.sh reads it at SessionStart.
+#   The folder has mode 700 and the file has mode 600. A reader trusts the file only when root matches its own root.
+# Helpers: rs_root, rs_subagent, rs_key, rs_dir, rs_handoff, rs_owned, rs_read, rs_write, rs_mask, rs_clean, rs_cut,
+#   rs_state_line, rs_first_line, rs_num (a whole number), rs_age (a time span), rs_contract (the contract of a root).
 
 rs_root() { # $1 = folder. Prints the git root, or the folder itself outside git.
   git -C "$1" rev-parse --show-toplevel 2>/dev/null || (cd "$1" 2>/dev/null && pwd -P)
@@ -31,6 +37,12 @@ rs_dir() { # $1 = root. Prints the state folder. Fails when there is no base fol
   rs_b=${XDG_STATE_HOME:-${HOME:+$HOME/.local/state}}
   [ -n "$rs_b" ] || return 1
   printf '%s/real/turn/%s\n' "$rs_b" "$(rs_key "$1")"
+}
+
+rs_handoff() { # $1 = root. Prints the handoff file. Fails when there is no base folder, as rs_dir does.
+  rs_b=${XDG_STATE_HOME:-${HOME:+$HOME/.local/state}}
+  [ -n "$rs_b" ] || return 1
+  printf '%s/real/handoff/%s.json\n' "$rs_b" "$(rs_key "$1")"
 }
 
 rs_owned() { # $1 = state folder, $2 = root. Succeeds when the folder belongs to that root (two roots can share a key).
@@ -109,4 +121,68 @@ rs_state_line() {
 # A reply on standard input. Prints the first line that has text, with the leading # > * - and spaces removed.
 rs_first_line() {
   awk '{ l = $0; sub(/^[[:space:]#>*-]+/, "", l); sub(/[[:space:]]+$/, "", l); if (l != "") { print l; exit } }'
+}
+
+rs_num() { case $1 in ''|*[!0-9]*) return 1 ;; esac; [ ${#1} -le 12 ]; }
+
+rs_age() { # $1 = now, $2 = earlier time, both epoch seconds. A time in the future counts as 0 s.
+  awk -v n="$1" -v t="$2" 'BEGIN { s = n - t; if (s < 0) s = 0
+    if (s < 60) printf "%d s", s; else if (s < 3600) printf "%d min", s / 60
+    else if (s < 86400) printf "%d h", s / 3600; else printf "%d d", s / 86400 }'
+}
+
+# $1 = root. Reads .real/contract.md, .real/claims.md and .real/evidence.jsonl. Returns 1 when the root has no contract.
+# On success it sets rs_task, rs_status (lower case), rs_verified and rs_total.
+# A verified item is a "done" claim with evidence ids that are all in the log with exit 0 or "unknown".
+# The awk code counts the DONE WHEN bullets of the contract.
+rs_contract() {
+  rs_ct=$1/.real/contract.md
+  [ -f "$rs_ct" ] || return 1
+  rs_task=$(sed -n 's/^Task:[[:space:]]*//p' "$rs_ct" | head -n 1 | sed 's/[[:space:]]*$//')
+  rs_status=$(sed -n 's/^Status:[[:space:]]*//p' "$rs_ct" | head -n 1 | sed 's/[[:space:]]*$//' | tr 'A-Z' 'a-z')
+  rs_cl=$1/.real/claims.md
+  [ -f "$rs_cl" ] || rs_cl=/dev/null
+  rs_ev=$1/.real/evidence.jsonl
+  [ -f "$rs_ev" ] || rs_ev=/dev/null
+  rs_vn=$(awk -F'|' '
+    function trim(s) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", s); return s }
+    kind == "ct" {
+      if ($0 ~ /^##[[:space:]]/) { name = $0; sub(/^##[[:space:]]+/, "", name); sub(/[[:space:]]+$/, "", name); insec = (name == "DONE WHEN"); next }
+      if (insec && $0 ~ /^[[:space:]]*([-*]|[0-9]+[.)])[[:space:]]+/) {
+        line = $0
+        sub(/^[[:space:]]*([-*]|[0-9]+[.)])[[:space:]]+/, "", line)
+        sub(/^\[[ xX~]\][[:space:]]*/, "", line)
+        gsub(/`/, "", line)
+        sub(/[[:space:]]*<!--.*$/, "", line)
+        sub(/[[:space:]]+$/, "", line)
+        if (line == "" || line ~ /^</) next
+        n++
+      }
+      next
+    }
+    kind == "cl" { k = trim($1); if (k ~ /^[0-9]+$/ && !(k in cs)) { cs[k] = tolower(trim($2)); ci[k] = trim($3) } next }
+    kind == "ev" {
+      if (match($0, /"id":"[^"]*"/)) {
+        id = substr($0, RSTART + 6, RLENGTH - 7)
+        if (!(id in ex)) {
+          e = ""
+          if (match($0, /"exit":"?[A-Za-z0-9-]+"?/)) { e = substr($0, RSTART + 7, RLENGTH - 7); gsub(/"/, "", e) }
+          ex[id] = e
+        }
+      }
+      next
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        if (cs[i] != "done") continue
+        s = ci[i]; gsub(/,/, " ", s); m = split(s, w, " ")
+        if (m == 0) continue
+        good = 1
+        for (j = 1; j <= m; j++) if (!(w[j] in ex) || (ex[w[j]] != "0" && ex[w[j]] != "unknown")) good = 0
+        if (good) v++
+      }
+      print v + 0, n + 0
+    }' kind=ct "$rs_ct" kind=cl "$rs_cl" kind=ev "$rs_ev")
+  rs_verified=${rs_vn% *}
+  rs_total=${rs_vn#* }
 }

@@ -5,7 +5,8 @@
       {
         "matcher": "startup|resume",
         "hooks": [
-          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/session-start.sh", "timeout": 10 }
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/session-start.sh", "timeout": 10 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-context.sh", "timeout": 10 }
         ]
       }
     ],

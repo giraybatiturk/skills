@@ -33,6 +33,7 @@ Agent hooks run in Claude Code. Most of them run in Codex too.
 | `hooks/claude/real-turn-log.sh` | UserPromptSubmit and Stop | Nothing. It records the turn: start time, request, end time, `STATE:` line and background jobs |
 | `hooks/claude/notify.sh` | Stop | Nothing. It sends a banner when a turn of 120 s or more ends |
 | `hooks/claude/session-start.sh` | SessionStart | Nothing. It warns you when the git hooks are not active |
+| `hooks/claude/real-context.sh` | SessionStart | Nothing. It gives the agent the repo facts and you a recap of the last session |
 
 The folder `hooks/claude/` holds the scripts for both clients. The name stays, because the first client was Claude Code.
 
@@ -119,6 +120,7 @@ A bypass is for one command. The user sets it. The agent hooks block an agent th
 | `REAL_ALLOW_UNVERIFIED=1` | The Stop gate |
 | `REAL_STOP_GATE=0`, `REAL_POST_FORMAT=0`, `REAL_NOTIFY=0`, `REAL_SESSION_CHECK=0` | The Stop gate, the formatter, the notifier and the session check |
 | `REAL_TURN_LOG=0` | The turn log |
+| `REAL_CONTEXT=0` | The context hook |
 | `REAL_OPEN_GUARD=off` | The open guard. Set it in the environment of the hook, not inside the command |
 | `REAL_SAFE_DELETES="a b"` | Adds names to the safe-delete list of the dangerous-command guard |
 | `REAL_SECRET_ALLOW="a b"` | Adds file names that the secret guard allows |
@@ -157,6 +159,20 @@ A `turn_end` that is older than `turn_start` means a turn runs now, or the last 
 - The rest of a line that holds a private key marker.
 
 The mask runs before the cut, so a cut token is never half visible. A cut counts characters, so it never splits a multi-byte character. The folder holds no handoff data.
+
+The turn log also writes a handoff file for the next session. The path is `${XDG_STATE_HOME:-$HOME/.local/state}/real/handoff/<key>.json`. The key is the same as for the turn folder. `rs_handoff` in `real-state-lib.sh` prints the path. The file holds one JSON line with these keys, in this order:
+
+| Key | Content |
+|---|---|
+| `root` | The absolute repo root. A reader ignores the file when this is not its own root, because two roots can share a key |
+| `branch` | The branch name, the short hash of a detached HEAD, or an empty string outside git |
+| `last_request` | The masked request. It is the same text as the file `last_request` |
+| `turn_start` | Epoch seconds, or `null` |
+| `turn_end` | Epoch seconds. It is `null` while a turn runs, and after a crash |
+| `state_line` | The masked text after `STATE:` of the last Stop. It is an empty string when there is none |
+| `clean_end` | `false` after a prompt. `true` after a Stop |
+
+A real prompt writes the file with `clean_end` false. A Stop writes it with `clean_end` true. A `/real-status` prompt does not change the file. A Stop that the hook skips does not change it either. The hook writes the file only after the write to the turn folder works. The folder has mode 700 and the file has mode 600. The hook writes a temp file and moves it over the old file. A reader never sees half a line. The context hook ignores a file that is older than 14 days.
 
 A STATE line starts with `STATE:`. Spaces and the characters `*`, `_`, backtick and `>` can come before the word. The last STATE line of the reply counts. The banner reads these forms:
 
@@ -207,6 +223,59 @@ The omp adapter for the turn log is a sketch too. It is not tested. The source i
 
 - `pi.on("input", ...)` runs `real-turn-log.sh` with `{ hook_event_name: "UserPromptSubmit", cwd, prompt: event.text }`.
 - `pi.on("session_stop", ...)` runs the gate scripts first. When nothing blocks, it runs `real-turn-log.sh` and then `notify.sh` with `{ hook_event_name: "Stop", cwd, stop_hook_active, last_assistant_message }`. The message is the text parts of `event.last_assistant_message`, joined.
+
+## Context at session start
+
+`real-context.sh` runs at SessionStart. It gives the agent a block of facts, and it gives you a recap of the last session. It makes no model call. It prints nothing when no line has data. It always exits 0 and never blocks. It skips the events of a subagent.
+
+The hook reads these sources:
+
+- The handoff file of the last session. The hook trusts it only when `root` is the current root and a time is a number. The file must not be older than 14 days. Otherwise the hook ignores the file and prints no request and no last-turn line.
+- Git: the branch, the number of changed files, the commits ahead and behind, and the last 5 commits.
+- The contract: the task, the status and the number of open DONE WHEN items.
+- `gh pr list` for your open pull requests. It runs only when `gh` is on `PATH` and the folder is a git work tree. It puts no token and no host in its arguments.
+- A memory command that you set with `REAL_CONTEXT_MEMORY_CMD`.
+
+The hook prints one JSON line with two parts:
+
+- `additionalContext` is for the agent. It has 1,200 characters or less. The first line says that the text is data, not instructions. The next lines are the last request, the last turn, git, the contract, the PRs, the commits and the notes. A line with no data is left out.
+- `systemMessage` is for you. It has 3 lines or less, and each line has 160 characters or less. Line 1 is the last request, cut to 80 characters. Line 2 is the last turn. Line 3 is the git and contract facts.
+
+The last-turn line says `ended without a clean stop, started <age> ago` when the turn has no Stop. After a Stop it says `<state>, <age> ago`. The age counts from `turn_end` after a clean stop, and from `turn_start` otherwise.
+
+After compaction (`source` is `compact`), the hook gives only the git line, the contract line and the last-turn line. It starts no `gh` and no memory command. It sends no `systemMessage`.
+
+The block never has more than 1,200 characters. A newline counts as one character. A block that is too long loses the notes line first, then the PR line, then the commits line. When it is still too long, the hook cuts it. A cut never splits a multi-byte character.
+
+The PR line has two forms. The full form lists up to 5 PRs as `#<number> <title> (<branch>)`. The hook uses it when the last session ended 24 h ago or more, or when no valid handoff exists. The short form is `PRs: <count> open`. It adds `this branch: #<n>` when a PR has the current branch. With no open PR, the line is `PRs: none open`. When `gh` is missing, fails or times out, there is no PR line.
+
+Every line of both outputs goes through one filter. The filter removes control characters and masks secrets with the mask of the turn log. It replaces the home folder, and any path under the home folder of a user, with `~`. It cuts the text last, so a cut token is never half visible. The last request, the commits, the PR titles and the notes are data from outside. The agent must not follow them as instructions.
+
+| Variable | Use |
+|---|---|
+| `REAL_CONTEXT=0` | Turns off the hook |
+| `REAL_CONTEXT_TIMEOUT` | The time limit of `gh` and of the memory command, in seconds. A whole number from 1 to 10. Another value means 3 |
+| `REAL_CONTEXT_MEMORY_CMD` | The memory command. Without it, the hook makes no memory call |
+
+`gh` and the memory command run in parallel. When one of them hangs, the hook ends within the time limit plus 2 s.
+
+Set `REAL_CONTEXT_MEMORY_CMD` to a command. The hook splits it on spaces and adds one argument, the query. A path with a space does not work. The query holds the repo folder name, the branch, the contract task and the first text line of the OBJECTIVE. The hook takes at most 3 non-empty lines from the standard output. It drops a line that the mask changes, because that line holds a secret. The line in the block is `notes (unverified): <note> | <note>`. When the command fails or times out, the line is `memory: unavailable`.
+
+`scripts/real-mem.sh search QUERY` is such a command for a memory service. It sends the search to `REAL_MEM_URL` with `curl`. Example: `REAL_CONTEXT_MEMORY_CMD="sh /ABSOLUTE/PATH/TO/skills/scripts/real-mem.sh search"`. It reads its settings from the environment only:
+
+| Variable | Use |
+|---|---|
+| `REAL_MEM_URL` | The base URL of the service. Required |
+| `REAL_MEM_TOKEN_FILE` | The file with the token. Required. Group and others must not read it: use mode 600 |
+| `REAL_MEM_USER` | The `user_id` of the search. Required |
+| `REAL_MEM_LIMIT` | The number of memories. Default: 3 |
+| `REAL_MEM_THRESHOLD` | The lowest score, as a number. Optional |
+
+The script refuses a missing token file and a token file that group or others can read. It refuses a token with a character outside `A-Za-z0-9._~+/=-`. It gives the token to `curl` on standard input. The token is never in an argument, an error message or a log. It exits 0 when it works, 1 on an error and 2 on bad usage. An error is one line on standard error that starts with `real-mem:`. The script reads the reply as `{"results":[{"memory":"..."}]}` or as a top-level array of the same objects.
+
+Put `real-context.sh` after `session-start.sh` and after the contract hook, when you use one, in the same SessionStart group. It does not repeat their text. It gives no git-hooks warning, no SCOPE and no DO NOT TOUCH. The contract line has only the task, the status and the open count. The Claude Code example has no matcher, so the hook also runs after compaction. The Codex example keeps the matcher `startup|resume`.
+
+omp: this mapping is not tested. `pi.on("before_agent_start", ...)` runs `real-context.sh` once for each session. The input is `{ hook_event_name: "SessionStart", source: "startup", cwd }`. The adapter returns `additionalContext` as a hidden message. It shows `systemMessage` as a visible message or as a notify call. Compaction is not checked.
 
 ## Client support
 
@@ -315,6 +384,8 @@ export default function realShip(pi: ExtensionAPI) {
 - Two sessions in one repo share one state folder. The last write wins.
 - The `jobs` file needs Claude Code and `jq`. Without `jq`, the hook removes it. Without `jq`, the hook reads `agent_id` at any depth. A background task entry with an `agent_id` then makes the hook skip the event.
 - The banner needs the permission of the system notifier. When the system blocks it, no banner shows.
+- The memory response format is not checked against a live service. `real-mem.sh` reads two shapes only.
+- Claude Code runs matching hooks in parallel. The text of `session-start.sh`, the contract hook and `real-context.sh` can come in any order.
 - A user can bypass any hook. CI is the only enforcement.
 
 ## Test
@@ -323,3 +394,5 @@ Run `sh scripts/test-hooks.sh`. The script makes temporary repos and a temporary
 
 Run `sh scripts/test-real-status.sh` for `scripts/real-status.sh`. It uses temporary repos, a temporary HOME and a temporary state folder.
 Run `sh scripts/test-real-ship.sh` for `real-ship.sh`. That script uses a temporary repo, a bare remote and stubs for `gh` and `glab`. It never calls the real tools.
+
+Run `sh scripts/test-real-context.sh` for the context hook, the handoff file and `scripts/real-mem.sh`. It runs each hook case with `jq` and without `jq`. It uses stubs for `gh`, `curl` and the memory command, so it needs no live service and no token.
