@@ -343,6 +343,17 @@ has "the report verdict: verified" "$out" "Verdict: verified (1 verified, 0 unve
 printf '1 | done | e7 | ok\n' > "$R/.real/claims.md"
 out=$(cd "$R" && sh "$RCS" report)
 has "the report: an invented id is unverified" "$out" "| 1 | the unit tests pass | yes | e7 | unverified |"
+# An agent can number the items. A numbered item counts like a bullet.
+R_KEEP=$R
+mkrepo feature
+(cd "$R" && sh "$RCS" new numbered >/dev/null 2>&1)
+sed -i.bak -e 's|^<one path or glob for each bullet.*$|1. src/feature/**|' -e 's|^<one measurable item.*$|1. the unit tests pass\n2) the lint passes|' -e 's|^<paths and areas that are off limits.*$|- src/payments/**|' "$R/.real/contract.md"; rm -f "$R/.real/contract.md.bak"
+RC=0; (cd "$R" && sh "$RCS" approve >/dev/null 2>"$TMP/err") || RC=$?
+eq "approve accepts numbered items" "$RC" "0"
+out=$(cd "$R" && sh "$RCS" report)
+has "the report lists a numbered item 1" "$out" "| 1 | the unit tests pass | no | - | unverified |"
+has "the report lists a numbered item 2" "$out" "| 2 | the lint passes | no | - | unverified |"
+R=$R_KEEP
 printf '1 | done | e1 | ok\n' > "$R/.real/claims.md"
 (cd "$R" && sh "$RCS" done >/dev/null) && ok || bad "done must succeed when all items are verified"
 eq "done sets the status" "$(sed -n 2p "$R/.real/contract.md")" "Status: done"

@@ -17,12 +17,12 @@ rc_status() { # $1 = repo root. Prints draft, active or done in lower case. Prin
   rc_header "$f" Status | tr 'A-Z' 'a-z'
 }
 
-rc_section() { # $1 = contract file, $2 = section name. Prints the bullet lines, one for each line, cleaned.
+rc_section() { # $1 = contract file, $2 = section name. Prints the bullet lines ("- ", "* ", "1. " or "1) "), one for each line, cleaned.
   awk -v want="$2" '
     /^##[[:space:]]/ { name = $0; sub(/^##[[:space:]]+/, "", name); sub(/[[:space:]]+$/, "", name); insec = (name == want); next }
-    insec && /^[[:space:]]*[-*][[:space:]]+/ {
+    insec && /^[[:space:]]*([-*]|[0-9]+[.)])[[:space:]]+/ {
       line = $0
-      sub(/^[[:space:]]*[-*][[:space:]]+/, "", line)
+      sub(/^[[:space:]]*([-*]|[0-9]+[.)])[[:space:]]+/, "", line)
       sub(/^\[[ xX~]\][[:space:]]*/, "", line)
       gsub(/`/, "", line)
       sub(/[[:space:]]*<!--.*$/, "", line)
