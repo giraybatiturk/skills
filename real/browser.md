@@ -18,11 +18,22 @@
 <!-- Why: Interrupting the browser of the user, or asking for repeated logins, breaks their focus. -->
 
 ## Always
+- To open a file or a page for the user, follow the section "Open on request" in `real/output.md`.
 - Never type a password. If a login is needed, the user does it.
 - Ask the user for verification codes. Never solve a captcha.
 - Run long jobs (test rounds, builds, agents) in the background. The user keeps working.
 - Go to the user only when you are truly stuck.
 - Truly stuck means: a login or MFA, a destructive action that needs approval, or an access permission.
+
+## Wait for a human step
+- A human step is, for example, a login, a code, a download, an upload or an action on a phone.
+- After you ask for a human step, do not end the turn. Do not wait for the user to write "done".
+- Wait in the background for a sign that the step is complete. Examples: an element on the page, the page title, a file, the state of a pull request.
+- Check the sign every few seconds. Continue when it appears.
+- For a login, wait for an element that shows the user is signed in. Never read cookies or passwords.
+- While you wait, do other work that does not depend on the step.
+- If 10 minutes pass with no sign, end the turn with `STATE: blocked - <what you need from the user>`. For a pull request merge, wait 30 minutes.
+<!-- Why: The user did the step and then had to write "done". The agent was idle or had ended the turn. -->
 
 ## Claude Code / omp only
 - In Claude Code, the logged-in browser route is Claude in Chrome, with the same tab rules.
