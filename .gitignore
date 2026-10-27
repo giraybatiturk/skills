@@ -3,5 +3,8 @@ dist/
 skills/engineering/real-check/scripts/node_modules/
 docs/evaluations/
 
+# Local task contract, claims and evidence of the agent hooks
+.real/
+
 # Personal machine setup; belongs in a dotfiles repo, not distributed here
 bootstrap.sh

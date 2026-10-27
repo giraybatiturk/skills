@@ -4,7 +4,8 @@
       {
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/session-start.sh", "timeout": 10 },
-          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-context.sh", "timeout": 10 }
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-context.sh", "timeout": 10 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/contract-start.sh", "timeout": 10 }
         ]
       }
     ],
@@ -30,6 +31,12 @@
         ]
       },
       {
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/contract-guard.sh", "timeout": 10 }
+        ]
+      },
+      {
         "matcher": "*",
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-approvals-hook.sh", "timeout": 10 }
@@ -42,6 +49,20 @@
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/post-format.sh", "timeout": 10 },
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-ui-track.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/evidence-log.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/evidence-log.sh", "timeout": 10 }
         ]
       }
     ],
@@ -56,6 +77,7 @@
       {
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/stop-gate.sh", "timeout": 300 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/contract-stop.sh", "timeout": 10 },
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-ui-stop.sh", "timeout": 10 },
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-turn-log.sh", "timeout": 10 },
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/notify.sh", "timeout": 10 }

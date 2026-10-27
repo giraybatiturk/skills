@@ -143,6 +143,7 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - Two UI hooks track edits of UI files. The Stop hook then asks the agent to run `real-shot` and show a before and after link. They need `ui.url` in `.real-hooks`.
 - The approvals table is one YAML file. It says which tool calls and commands run alone, which ask you, and which are denied. A hook for Claude Code and Codex enforces it.
 - `scripts/real-approvals.sh` checks the table, explains one decision, grants a rule for a short time and prints an omp block. Keep your real table private.
+- Contract hooks enforce a local task contract (`.real/contract.md`): SCOPE and DO NOT TOUCH, an evidence log, and a check that each DONE WHEN item has proof. `real-plan` writes the contract in its contract mode.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 

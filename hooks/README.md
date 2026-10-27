@@ -32,6 +32,10 @@ Agent hooks run in Claude Code. Most of them run in Codex too.
 | `hooks/claude/real-ui-track.sh` | PostToolUse, Edit, Write and apply_patch | Nothing. It writes the time of an edit of a UI file to `.real/ui-dirty`. It runs only when `ui.url` is set |
 | `hooks/claude/stop-gate.sh` | Stop | The end of a turn while the typecheck, the lint or the tests fail |
 | `hooks/claude/real-ui-stop.sh` | Stop | The end of a turn, once for each UI edit, until `real-shot.mjs --after` has run. It runs only when `ui.url` is set |
+| `hooks/claude/contract-guard.sh` | PreToolUse, file tools and Bash | With an active contract: an edit inside DO NOT TOUCH or outside SCOPE. Without one: the edit of a 4th changed file. Asks in Claude Code, blocks in Codex |
+| `hooks/claude/evidence-log.sh` | PostToolUse and PostToolUseFailure, Bash | Nothing. It writes one line for each command to `.real/evidence.jsonl` while a contract is active |
+| `hooks/claude/contract-stop.sh` | Stop | The end of a turn while a DONE WHEN item of the active contract has no proof |
+| `hooks/claude/contract-start.sh` | SessionStart | Nothing. It gives the agent the active contract: task, SCOPE and DO NOT TOUCH |
 | `hooks/claude/notify.sh` | Notification | Nothing. It sends a desktop or webhook message when the agent waits for you |
 | `hooks/claude/real-turn-log.sh` | UserPromptSubmit and Stop | Nothing. It records the turn: start time, request, end time, `STATE:` line and background jobs |
 | `hooks/claude/notify.sh` | Stop | Nothing. It sends a banner when a turn of 120 s or more ends |
@@ -63,6 +67,26 @@ The script follows these rules:
 For the agent hooks, the script prints the Claude Code settings with your absolute path. Merge the text into `~/.claude/settings.json` or into `.claude/settings.json` of the repo. The same text is in `hooks/claude/settings.example.json`, with the placeholder `/ABSOLUTE/PATH/TO/skills`.
 
 For Codex, copy `hooks/codex/hooks.example.json` to `~/.codex/hooks.json` or to `<repo>/.codex/hooks.json`. Replace the placeholder path. Codex asks you to review and trust each hook before it runs.
+
+## Task contract
+
+A contract is the work order of one agent task. The `real-plan` skill writes it in its contract mode (`skills/product/real-plan/references/contract.md`). The hooks above enforce it. `scripts/real-contract.sh` manages it.
+
+- **Where.** The active contract is `.real/contract.md` in the worktree. It is local. Do not commit it. Add `.real/` to `.git/info/exclude` or to the `.gitignore` of the repo. `scripts/real-contract.sh new` warns when `.real/` is not ignored. Each worktree has its own contract.
+- **Format.** Three header lines (`Task`, `Status`, `Owner`) and 7 sections: OBJECTIVE, CONTEXT, SCOPE, DO NOT TOUCH, DEPENDENCIES, EXPECTED OUTPUT, DONE WHEN. SCOPE and DO NOT TOUCH hold one path or glob for each bullet. `*` also matches `/`. A glob that ends in `/` means the whole folder. DO NOT TOUCH wins over SCOPE.
+- **Status.** `draft` is not enforced. `active` is enforced. `done` closes the contract. The user sets `active` with `scripts/real-contract.sh approve`.
+- **Proof.** While the contract is active, `evidence-log.sh` writes `.real/evidence.jsonl`: id, time, exit code, a hash and the command (cut to 200 characters, token-like values masked). The agent proves a DONE WHEN item in `.real/claims.md`, with one line for each item: `N | done | e3, e5 | note`, or `N | could-not-measure | | verifier: who can verify it`. `contract-stop.sh` blocks the stop while an item has no valid line. An id that is not in the log, or that belongs to a failed command, is not proof.
+- **Report.** `scripts/real-contract.sh report` prints the Claimed and Verified table with a verdict: verified, partly verified or not verified. `done` fails until every item is verified. `archive` copies the contract and the report to `docs/contracts/`. That folder is the only place that you commit, and only when you want an audit trail.
+- **Protected.** An agent cannot change an active contract or the evidence log. The user changes SCOPE with `scripts/real-contract.sh add-scope <glob>`. The guard asks before an agent can run `approve`, `add-scope`, `done` or `reopen`.
+- **Ask or block.** Claude Code asks the user. Codex and omp cannot ask, so the examples set `REAL_ASK_MODE=deny` and the guard blocks.
+- **When a contract is needed.** By default, work on more than 3 changed files needs a contract (`contract.required = auto`). The edit of a 4th changed file stops. Smaller work needs none.
+
+Keys for the `.real-hooks` file (the environment variable `REAL_<KEY>` wins):
+
+| Key | Use |
+|---|---|
+| `contract.required` | `auto` (default): a contract is needed for more than 3 changed files. `always`: a contract is needed for the first edit. `off`: never |
+| `contract.mode` | `block` makes the guard block, as in Codex. Default: ask. `REAL_ASK_MODE=deny` does the same |
 
 ## Settings
 
@@ -123,12 +147,14 @@ A bypass is for one command. The user sets it. The agent hooks block an agent th
 | `REAL_ALLOW_UNTESTED=1` | The test coverage check |
 | `REAL_ALLOW_PRIVACY=1` | The pre-push scan |
 | `REAL_ALLOW_TEST_EDIT=1` | The test-weakening guard |
-| `REAL_ALLOW_UNVERIFIED=1` | The Stop gate |
+| `REAL_ALLOW_UNVERIFIED=1` | The Stop gate and the contract stop check |
+| `REAL_ALLOW_SCOPE=1` | The contract guard |
 | `REAL_STOP_GATE=0`, `REAL_POST_FORMAT=0`, `REAL_NOTIFY=0`, `REAL_SESSION_CHECK=0` | The Stop gate, the formatter, the notifier and the session check |
 | `REAL_TURN_LOG=0` | The turn log |
 | `REAL_CONTEXT=0` | The context hook |
 | `REAL_UI_LOOP=0` | The two UI hooks, `real-ui-track.sh` and `real-ui-stop.sh` |
 | `REAL_OPEN_GUARD=off` | The open guard. Set it in the environment of the hook, not inside the command |
+| `REAL_CONTRACT_GUARD=0`, `REAL_CONTRACT_STOP=0`, `REAL_CONTRACT_START=0`, `REAL_EVIDENCE=0` | The contract guard, the contract stop check, the contract start message and the evidence log |
 | `REAL_SAFE_DELETES="a b"` | Adds names to the safe-delete list of the dangerous-command guard |
 | `REAL_SECRET_ALLOW="a b"` | Adds file names that the secret guard allows |
 
@@ -415,6 +441,8 @@ Sources:
 
 ### Sketch for omp (not tested)
 
+The same pattern fits the contract guard. Use the tool names of omp for `edit` and `write`, pass the path as `file_path`, and set `REAL_ASK_MODE: "deny"`, because the guard cannot ask there.
+
 This sketch is not tested. It runs the Bash scripts `dangerous-command.sh`, `real-open-guard.sh` and `real-approvals-hook.sh` in turn. It blocks on the first exit 2. It shows the idea only.
 
 ```ts
@@ -501,6 +529,10 @@ export default function realShip(pi: ExtensionAPI) {
 - A Bash command that is too long or too nested to scan in time gets `ask`. A `deny` that the hook finds first still wins.
 - The guard of the approvals table and the grants folder reads text only. A command or a path that builds the name at run time is not caught.
 - A grant is a file. A process that writes the file by another path is not caught.
+- The contract guard reads paths and commands. It is a guardrail, not a boundary. An agent with a shell can write a file in a way that the Bash check does not see. Examples: `python -c`, or a command that builds its target at run time. Review and the git hooks catch the rest.
+- A path is checked as the agent gives it. A `cd` inside a Bash command is not followed.
+- The contract stop check blocks a turn that ends with a question to the user while an item has no proof. It stops after 2 retries. Set `REAL_CONTRACT_STOP=0` for a session with no contract work.
+- The evidence log proves that a command ran and what its exit code was. It does not prove that the command tests the right thing.
 - A user can bypass any hook. CI is the only enforcement.
 
 ## Test
