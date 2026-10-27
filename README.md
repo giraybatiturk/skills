@@ -130,6 +130,8 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - `scripts/real-ship.sh` never uses `git add -A`, never forces a push and never skips a hook. The command template is `commands/real-ship.md`.
 - The context hook `real-context.sh` runs at session start. It gives the agent repo facts: the last request, git, the contract and your open PRs. Memory notes are optional. Each line is masked.
 - The same hook gives you a recap of 3 lines or less. It shows the last request, how the last turn ended, and the git and contract facts.
+- `scripts/real-await.sh` waits for a human step, such as a login, a download or a merge. It checks a file, a URL, a pull request, a command or a process, and exits when the check passes. The finished background job wakes the agent.
+- `/real-status` shows a `waiting:` line while a wait runs. Read [docs/real-await.md](docs/real-await.md) for the probes, the exit codes and the one notification.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 

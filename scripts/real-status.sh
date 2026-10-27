@@ -11,6 +11,7 @@
 #   last: <command> (exit <code>), <command> (<code>), ...
 #   turn: <state> <age> ago - "<request>"   or   turn: running for <age> - "<request>"
 #   jobs at last stop: <job>; <job>
+#   waiting: <message> (<left> left); <message> (<left> left)   a wait that scripts/real-await.sh runs now (at most 3)
 # Sources: git, .real/contract.md, .real/claims.md, .real/evidence.jsonl (the last 3 lines), and the turn log
 # that hooks/claude/real-turn-log.sh writes in ${XDG_STATE_HOME:-$HOME/.local/state}/real/turn/.
 # Every line is cleaned, masked and cut to 160 characters.
@@ -111,5 +112,21 @@ else
     jobs=$(head -n 5 "$sd/jobs" | awk 'NF { printf "%s%s", (c++ ? "; " : ""), $0 }')
     [ -n "$jobs" ] && emit "jobs at last stop: $jobs"
   fi
+fi
+
+# 6. Waits. scripts/real-await.sh writes wait.<pid>: "<start> <deadline> <probe> <message>". Stale files are skipped.
+if rs_owned "$sd" "$root"; then
+  w=
+  c=0
+  for f in $(ls "$sd" 2>/dev/null | grep '^wait\.[0-9]\{1,10\}$'); do
+    [ "$c" -lt 3 ] || break
+    read -r w_s w_d w_p w_m <<EOF
+$(rs_read "$sd" "$f" "$root")
+EOF
+    rs_num "$w_s" && rs_num "$w_d" && [ "$w_d" -gt "$now" ] && [ "${f#wait.}" -gt 0 ] && kill -0 "${f#wait.}" 2>/dev/null || continue
+    w="$w${w:+; }$(printf '%s' "$w_m" | rs_clean | rs_mask) ($(rs_age "$w_d" "$now") left)"
+    c=$((c + 1))
+  done
+  [ -n "$w" ] && emit_masked "waiting: $w"
 fi
 exit 0

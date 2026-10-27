@@ -11,6 +11,7 @@
 #   jobs          in-flight background tasks at the last Stop, one for each line. Removed at Stop when there are none.
 #   status_prompt epoch seconds, written at UserPromptSubmit of a /real-status prompt. A real prompt removes it.
 #                 While it is set, a Stop with no STATE line changes no file. The banner counts from the later of turn_start and status_prompt.
+#   wait.<pid>    "<start> <deadline> <probe> <message>", written by scripts/real-await.sh while it waits. The script removes it at the end.
 # The layout is stable. Later hooks read these files. Every file is one line, except jobs.
 # Handoff file: ${XDG_STATE_HOME:-$HOME/.local/state}/real/handoff/<key>.json, one JSON line, with the same <key>. rs_handoff prints the path.
 #   Keys, in this order: root, branch, last_request, turn_start, turn_end, state_line, clean_end.
