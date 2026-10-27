@@ -18,7 +18,7 @@
 <!-- Why: Interrupting the browser of the user, or asking for repeated logins, breaks their focus. -->
 
 ## Always
-- To open a file or a page for the user, follow the section "Open on request" in `real/output.md`.
+- To open a file or a page for the user, run `real-show.sh --open`. Read the section "Open on request" in `real/output.md`.
 - Never type a password. If a login is needed, the user does it.
 - Ask the user for verification codes. Never solve a captcha.
 - Run long jobs (test rounds, builds, agents) in the background. The user keeps working.

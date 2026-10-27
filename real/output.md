@@ -17,12 +17,14 @@
 <!-- Why: A 200 can come from the server of another session on the same port. -->
 
 ## Open on request
-- If the user says "open" or "show" about a file or a folder, open it in the background. On macOS, run `open -g <path>`. The app does not take focus.
-- If the user says "open" about a web page, give the link. Do not open the page.
+- To open or show a file, a folder or a URL for the user, run `real-show.sh --open <target>`.
+- On macOS the helper opens a file or a folder in the background. The app does not take focus.
+- For a web page, the helper prints the link only. Give that link to the user. Do not open the page.
+- If `real-show.sh` is not available, run `open -g <path>` for a file or a folder. Give a link for a web page.
 - If the user says that a link did not open, check the scheme and the page title. Then give the link again.
 - Do not open a page, a file or a window during a test, a screenshot or a build. Use the own headless browser.
-- Do not run `open`, `xdg-open` or a browser command for any other reason.
-<!-- Why: A test showed that `open -g` still makes a new tab the active tab. Without `-g`, the app also takes focus. A page that opens by itself interrupts the user. -->
+- Do not run `open`, `xdg-open` or a browser command for any other reason. A hook can deny these commands.
+<!-- Why: A test showed that `open -g` still makes a new tab the active tab. Without `-g`, the app also takes focus. A page that opens by itself interrupts the user. One helper keeps the link, the title check and the open rule in one place. -->
 
 ## Generated documents and artifacts
 - Give every generated HTML document or print source a fixed white background.
