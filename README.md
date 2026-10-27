@@ -124,6 +124,8 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - Agent hooks for Claude Code and Codex guard dangerous commands, secret files and weak tests. They run a done gate before the agent stops.
 - The open guard denies a direct `open`, `xdg-open` or browser start in the agent shell. `scripts/real-show.sh` prints a verified link to a file, folder or page instead.
 - `real-show.sh --open` opens a folder or a file on macOS only. A web page gets a link and is never opened.
+- The turn log records the start, the request and the end of each agent turn. At the end of a turn of 120 s or more, `notify.sh` sends a banner. The banner shows the `STATE:` line of the last reply.
+- `/real-status` prints at most 8 lines: the branch, the contract, the last commands, the last turn and the background jobs. It makes no model call. `scripts/real-status.sh` runs in any shell.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 
