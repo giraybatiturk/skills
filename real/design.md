@@ -44,6 +44,7 @@ Use this loop when the user sends a screenshot with a short remark about the int
 4. Capture "after" at both widths after each change.
 5. Measure both widths with the order above. Report the numbers: sideways scroll, targets under 40 px, long text that does not wrap.
 6. Show before and after side by side on one page with a white background. Give the link.
-7. Do not write "looks fine" without numbers.
-8. If the remark is ambiguous, make the most likely change and show it. Do not ask first.
+7. Use the `real-shot` mode of `real-test` for steps 3 to 6. It writes the images, the numbers and the comparison page.
+8. Do not write "looks fine" without numbers.
+9. If the remark is ambiguous, make the most likely change and show it. Do not ask first.
 <!-- Why: Most interface feedback is a screenshot with a short remark. Without a before and after and without numbers, each remark needed many rounds. -->

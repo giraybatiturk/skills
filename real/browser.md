@@ -29,6 +29,7 @@
 - A human step is, for example, a login, a code, a download, an upload or an action on a phone.
 - After you ask for a human step, do not end the turn. Do not wait for the user to write "done".
 - Wait in the background for a sign that the step is complete. Examples: an element on the page, the page title, a file, the state of a pull request.
+- Use `scripts/real-await.sh` to wait in the background. It checks a file, an address, a pull request, a command or a process, and it prints `HUMAN_STEP_DONE` or `HUMAN_STEP_TIMEOUT`.
 - Check the sign every few seconds. Continue when it appears.
 - For a login, wait for an element that shows the user is signed in. Never read cookies or passwords.
 - While you wait, do other work that does not depend on the step.
