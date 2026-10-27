@@ -1,6 +1,6 @@
 ---
 name: real-plan
-description: "Plan new features and product changes before implementation: user stories, requirements, architecture and acceptance criteria. Use for planla or shaping a chosen but unsettled idea; to generate options or judge whether an idea would work, use real-brainstorm. Reuse existing approval and skip renewed planning for approved edits. (v0.8.0)"
+description: "Plan new features and product changes before implementation: user stories, requirements, architecture and acceptance criteria. Use for planla or shaping a chosen but unsettled idea; to generate options or judge whether an idea would work, use real-brainstorm. Reuse existing approval. Do not plan again for approved edits. (v0.8.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
@@ -12,32 +12,67 @@ metadata:
 
 ## Work proportional to the decision
 
-First identify the smallest useful next outcome. Reuse existing behavior, components and platform capabilities; do not add speculative abstractions, dependencies or future scope. Simplicity never removes required security, accessibility, recovery or verification.
+First find the smallest useful next outcome. Reuse existing behavior, components and platform capabilities.
+- Do not add speculative abstractions, dependencies or future scope.
+- Simplicity never removes required security, accessibility, recovery or verification.
 
-If a material prerequisite such as platform, delivery channel or intended outcome is unresolved, ask only 1–3 independent questions that unlock the next decision, with concise choices and a recommendation. Stop the dependent plan there. Do not produce a schema, API design, exhaustive acceptance matrix or five-heading draft before those answers. Continue useful independent evidence gathering. Existing approval and known facts bypass this intake.
+If a material prerequisite is not resolved, ask only 1–3 independent questions that unlock the next decision. Examples of prerequisites: platform, delivery channel, intended outcome.
+- Give concise choices and a recommendation.
+- Stop the dependent plan there.
+- Do not produce a schema, API design, exhaustive acceptance matrix or five-heading draft before the user answers.
+- Continue useful independent evidence gathering.
+- Existing approval and known facts bypass this intake.
 
-Once prerequisites are settled, give the five headings at the depth the selected scope requires. Lead chat with the decision and up to five important items; put necessary detail in one linked local report when permitted. If chat-only, use compact sections without omitting required evidence. End with one next action only if work remains; do not assign the user work the agent can do. Report observed duration or grounded estimates only, never invented timing.
+When the prerequisites are settled, give the five headings at the depth that the selected scope needs.
+- In chat, give the decision first, then up to five important items.
+- Put necessary detail in one linked local report when permitted.
+- If you can use chat only, use compact sections. Do not omit required evidence.
+- End with one next action only if work remains. Do not give the user work that the agent can do.
+- Report observed duration or grounded estimates only. Never invent timing.
 
-Start with the user's story and current evidence. Reuse facts already established in the conversation; do not make the user repeat them.
+Start with the story of the user and the current evidence. Reuse facts that you already established in the conversation. Do not make the user repeat them.
 
-Keep observed implementation, unknown implementation and proposed scope separate. A missing feature does not prove its supporting components are absent; single-user does not prove authentication is absent. Do not attribute these deductions to a source that does not state them. Proposed mechanisms are hypotheses until verified: a flag or ordering of operations alone does not prove atomicity, exactly-once delivery or crash recovery. Include the failure/concurrency checks required to establish such guarantees. Before sending, inspect every claim that a mechanism prevents duplicates, ensures delivery or guarantees recovery. An identifier, flag, queue or ordering is a proposed mechanism, not proof. Without inspected contract or executed checks, explicitly keep the guarantee unverified in that very sentence.
+Keep three things separate: observed implementation, unknown implementation and proposed scope.
+- A missing feature does not prove that its supporting components are absent. A single user does not prove that authentication is absent.
+- Do not attribute these deductions to a source that does not state them.
+- A proposed mechanism is a hypothesis until you verify it. A flag or the order of operations alone does not prove atomicity, exactly-once delivery or crash recovery.
+- Include the failure and concurrency tests that establish such guarantees.
+- Before you send, inspect every claim that a mechanism prevents duplicates, ensures delivery or guarantees recovery.
+- An identifier, flag, queue or ordering is a proposed mechanism. It is not proof.
+- Without an inspected contract or executed tests, keep the guarantee unverified. Say so in that same sentence.
 
-When the platform or delivery mechanism is unresolved, keep dependent API, accessibility, timing and integration requirements conditional. Do not prescribe web-only semantics for an unknown/native platform or state that network/secrets are absent without evidence. Numeric acceptance targets require a stated user/project requirement or an explicitly labeled proposal to validate; precision alone is not evidence. Apply orchestration triggers to decisions being made now, and record deferred provider-dependent decisions rather than declaring them settled.
+When the platform or delivery mechanism is not resolved:
+- Keep the dependent API, accessibility, timing and integration requirements conditional.
+- Do not prescribe web-only semantics for an unknown or native platform.
+- Do not state that network or secrets are absent without evidence.
+- A numeric acceptance target needs a stated requirement of the user or project. Or label it clearly as a proposal to validate. Precision alone is not evidence.
+- Apply the orchestration triggers to the decisions that you make now. Record the deferred provider-dependent decisions. Do not declare them settled.
 
 1. If the idea or decision is unsettled, read `references/discovery.md` and resolve only the open branches.
 2. For a product or code change, read `references/feature-gate.md` and inspect the repository and running system read-only.
 3. Show these five headings before implementation: **User story**, **Analysis**, **Backend scope**, **Frontend scope**, **Connection**.
-4. Include measurable acceptance criteria and label anything unavailable as **Could not measure**, with who or what can verify it.
-5. Wait for approval of the five headings before editing implementation files. Existing session approval remains valid when the scope has not changed.
+4. Include measurable acceptance criteria. Label anything unavailable as **Could not measure**, with who or what can verify it.
+5. Wait for approval of the five headings before you edit implementation files. Existing session approval stays valid when the scope has not changed.
 
-After approval, when writing is permitted, save the five headings and acceptance criteria to `docs/plans/YYYY-MM-DD-<slug>.md` in the current project unless the user names another place, and link it in chat; otherwise stay chat-only.
+After approval, when writing is permitted, save the five headings and acceptance criteria to `docs/plans/YYYY-MM-DD-<slug>.md` in the current project, unless the user names another place. Link it in chat. If writing is not permitted, stay chat-only.
 
-Optional handoff: when the approved plan has acceptance criteria for a web app flow, offer to save them as a flows file next to the plan, `docs/plans/YYYY-MM-DD-<slug>-flows.txt`, one flow per line in plain text, no bullets or numbering. Only if `real-test` is in the client's skill catalog, add one line at the end: "Next, optional: after implementation, `/real-test <url> --flows <file>`." Skip silently if it is not installed; never invoke it.
+Optional handoff: the approved plan can have acceptance criteria for a web app flow. Then offer to save them as a flows file next to the plan: `docs/plans/YYYY-MM-DD-<slug>-flows.txt`.
+- Write one flow on each line in plain text. Do not use bullets or numbering.
+- Do this only if `real-test` is in the skill catalog of your tool. Then add one line at the end: "Next, optional: after implementation, `/real-test <url> --flows <file>`."
+- If `real-test` is not installed, skip this silently. Never start it.
 
-This workflow requires real-audit from the same bundle. Resolve its installed location from the client's skill catalog, or use the adjacent `../real-audit` directory if present. If unavailable, report the missing dependency and request installation of the full Real bundle; do not invent its rules or continue dependent work.
+This workflow needs real-audit from the same bundle.
+- Resolve its installed location from the skill catalog of your tool. Or use the adjacent `../real-audit` folder if it is there.
+- If it is not available, report the missing dependency. Ask the user to install the full Real bundle. Do not invent its rules. Do not continue dependent work.
 
-Read the resolved real-audit `references/product-context.md` for shared context persistence. Reuse the canonical project `PRODUCT.md` and prior answers; save confirmed durable product facts there during discovery, before handoff to design/implementation. Respect explicit read-only limits. Context documentation is not implementation approval. Keep candidate stories and proposed changes in planning documents, and link approved story records instead of copying them into PRODUCT.md. Do not create or modify DESIGN.md during product intake; a separate applicable design-policy authorization is required.
+Read the resolved real-audit `references/product-context.md` for shared context persistence.
+- Reuse the canonical `PRODUCT.md` of the project and the prior answers.
+- During discovery, before the handoff to design or implementation, save verified durable product facts there.
+- Obey explicit read-only limits.
+- Context documentation is not implementation approval.
+- Keep candidate stories and proposed changes in planning documents. Link approved story records. Do not copy them into PRODUCT.md.
+- Do not create or change DESIGN.md during product intake. A separate applicable design-policy authorization is required.
 
-For UI work, read the resolved real-audit `references/design-rules.md`; the project's own `DESIGN.md` takes precedence.
+For UI work, read the resolved real-audit `references/design-rules.md`. The `DESIGN.md` of the project takes precedence.
 
-Keep a small, reversible change single-agent. Read the resolved real-audit `references/orchestration.md` to determine triggers and follow them.
+Keep a small, reversible change with a single agent. Read the resolved real-audit `references/orchestration.md` to find the triggers. Follow them.

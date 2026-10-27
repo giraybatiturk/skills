@@ -1,6 +1,6 @@
 # Product audit mode
 
-Audit the product that actually exists. Produce an evidence-backed product decision document, not a generic checklist or an invented roadmap.
+Audit the product that actually exists. Produce an evidence-backed product decision document. Do not produce a generic checklist or an invented roadmap.
 
 ## Questions to answer
 
@@ -8,22 +8,25 @@ Audit the product that actually exists. Produce an evidence-backed product decis
 2. Which complete user journeys work, fail, or remain unverified?
 3. Where do product claims, user stories, implementation, tests, telemetry, pricing, and store messaging disagree?
 4. What belongs in Now, Next, Later, and Not doing?
-5. What coherent next release should ship, and how will its success be measured?
+5. Which coherent next release ships, and how will you measure its success?
 
 ## Evidence rules
 
-- Inspect the repository, running product, product documents, store material, analytics definitions, support evidence, and delivery configuration that are available.
-- Measure before concluding. Label statements as **Fact**, **Inference**, or **Decision** when the distinction matters.
+- Inspect the available repo, running product, product documents, store material, analytics definitions, support evidence, and delivery configuration.
+- Measure before you conclude. When the distinction matters, label statements as **Fact**, **Inference**, or **Decision**.
 - Write **Could not measure** for unavailable analytics, user evidence, external systems, or live behavior. Name who or what can verify it.
 - Never invent baselines, targets, dates, owners, revenue, conversion, retention, or user demand.
-- Identify the canonical source for each product claim. Record contradictions instead of silently choosing one.
+- Identify the canonical source for each product claim. Record contradictions. Do not choose one silently.
 - This audit writes a report. It does not change product behavior, pricing, roadmap systems, analytics, releases, or live configuration.
 
 ## Workflow
 
 ### 0. Establish context and story authority
 
-Follow `product-context.md`: reuse confirmed purpose, users/buyers, success criteria and constraints, then ask only unresolved decisions. Review existing stories and label newly derived stories as candidates. Trace approved criteria to runtime evidence; separate story gaps from implementation defects. Do not make new product requirements from today's implementation.
+Follow `product-context.md`. Reuse the confirmed purpose, users/buyers, success criteria and constraints. Then ask only the unresolved decisions.
+- Review existing stories. Label newly derived stories as candidates.
+- Trace approved criteria to runtime evidence. Separate story gaps from implementation defects.
+- Do not make new product requirements from the implementation of today.
 
 ### 1. Inventory product truth
 
@@ -53,13 +56,16 @@ Compare each statement with observable behavior. Mark it **Aligned**, **Drifted*
 
 ### 3. Trace complete journeys
 
-Map the important journeys from entry to outcome. Include positive and negative user stories plus empty, loading, permission-denied, offline, expired-entitlement, destructive, and recovery states when relevant. Give each story observable acceptance criteria.
+Map the important journeys from entry to outcome.
+- Include positive and negative user stories.
+- When relevant, include empty, loading, permission-denied, offline, expired-entitlement, destructive, and recovery states.
+- Give each story observable acceptance criteria.
 
 For each journey, trace:
 
 `User need -> story -> interface -> domain behavior -> persistence/API -> notification or background behavior -> analytics -> test -> outcome`
 
-Do not count a screen or isolated component as a complete journey.
+Do not count a screen or an isolated component as a complete journey.
 
 ### 4. Prioritize findings
 
@@ -70,28 +76,31 @@ Use severity first:
 - **P2**: recurring friction, weak comprehension, or measurable product drift
 - **P3**: polish or low-impact opportunity
 
-Then place work into **Now**, **Next**, **Later**, or **Not doing**. Explain the evidence, user impact, dependency, and tradeoff. Do not fabricate RICE scores when reach, impact, confidence, or effort data is unavailable.
+Then place work into **Now**, **Next**, **Later**, or **Not doing**. Explain the evidence, user impact, dependency, and tradeoff. Do not fabricate RICE scores when reach, impact, confidence, or effort data is not available.
 
 ### 5. Build the metric tree
 
 Define one product outcome and its leading indicators. Give exact formulas, required events/properties, exclusion rules, and measurement windows.
 
-Check whether current telemetry can calculate each metric. Separate:
+Verify if the current telemetry can calculate each metric. Separate:
 
 - measurable now
 - requires instrumentation
 - requires qualitative research
 - unsuitable as a success metric
 
-Prefer behavior and retained value over activity totals.
+Prefer behavior and retained value to activity totals.
 
 ### 6. Audit monetization
 
-Assess whether a revenue model exists and whether pricing, packaging, entitlement, paywall timing, restore, cancellation messaging, and store claims support the product promise. In a full-product audit, record this baseline and any evidence gaps. Use `monetization.md` for a selected detailed monetization audit; do not silently add market research, analytics exports, or experiments to the scope. Treat market prices and platform rules as live facts and verify them before using them.
+Assess whether a revenue model exists. Assess whether pricing, packaging, entitlement, paywall timing, restore, cancellation messaging, and store claims support the product promise.
+- In a full-product audit, record this baseline and any evidence gaps.
+- For a selected detailed monetization audit, use `monetization.md`. Do not add market research, analytics exports, or experiments to the scope silently.
+- Treat market prices and platform rules as live facts. Verify them before you use them.
 
 ### 7. Define the next release
 
-Choose the smallest coherent release that improves one user outcome and can be verified. Include:
+Choose the smallest coherent release that improves one user outcome and that you can verify. Include:
 
 - release objective
 - included and excluded journeys
@@ -101,11 +110,11 @@ Choose the smallest coherent release that improves one user outcome and can be v
 - release guardrails
 - success and rollback signals
 
-Do not group unrelated backlog items into the release merely because they are nearby.
+Do not group unrelated backlog items into the release only because they are nearby.
 
 ## Finding format
 
-Use `reporting.md` as the shared presentation contract, retaining the additional product fields below. Map technical severity to High / Medium / Low and retain a separate critical-blocker flag. Use this format for every material finding:
+Use `reporting.md` as the shared presentation contract. Keep the additional product fields below. Map technical severity to High / Medium / Low. Keep a separate critical-blocker flag. Use this format for every material finding:
 
 ```text
 [PA-01] Finding title [P0|P1|P2|P3]
@@ -119,7 +128,7 @@ Decision: Now | Next | Later | Not doing | Needs evidence
 
 ## Deliverable
 
-Write the full report to the project's existing product-documentation location. If none exists, use `docs/product-audit-YYYY-MM-DD.md`.
+Write the full report to the existing product-documentation location of the project. If none exists, use `docs/product-audit-YYYY-MM-DD.md`.
 
 The report must contain:
 
@@ -134,7 +143,7 @@ The report must contain:
 9. Open decisions, each with the owner who must make it
 10. Evidence that could not be gathered, with its verifier
 
-Return a concise summary in chat with the report link, top findings, the open decisions and anything that could not be measured.
+Return a concise summary in chat with the report link, the top findings, the open decisions and anything that you could not measure.
 
 ## Routing boundaries
 
@@ -144,4 +153,4 @@ Return a concise summary in chat with the report link, top findings, the open de
 - Use `real-audit` Design mode for interface quality.
 - Use `real-audit` Performance mode for measured web performance.
 
-Recommend these focused skills when necessary. Do not duplicate or silently launch their workflows inside this audit.
+Recommend these focused skills when necessary. Do not duplicate their workflows inside this audit. Do not start them silently.
