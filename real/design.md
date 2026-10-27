@@ -1,24 +1,36 @@
 # Design
 
-The baseline rules live in one place: `real-audit` `references/design-rules.md`, in this repo. `real-plan` and `real-audit` load it for UI and interface work; its rules are binding. This file keeps only the deltas.
+Baseline rules live in `real-audit` `references/design-rules.md`. They are binding for UI work.
+This file keeps only the extras.
 
-## Precedence and copies
-- The project's own `DESIGN.md` wins when it exists; it sits on top of the baseline. Concrete tokens, colours and components are written there.
-- No third copy. If the baseline must change, change the canonical reference in this repo with a PR. Never put a second copy in an agent configuration folder.
+## Precedence
+- The project's own `DESIGN.md` wins. It sits on top of the baseline.
+- Concrete tokens, colours and components go there.
+- No third copy of the baseline. Change the canonical reference in this repo with a PR.
+- Never put a second copy in an agent configuration folder.
+<!-- Why: Copies drift apart and then contradict each other. -->
 
 ## Prototype delivery with all states
-- Design work is delivered as a prototype with all its states. Whatever is being built (screen, feature, flow), produce every case: empty, loading, error, filled, first use, no permission, mobile, every role and every intermediate step.
-- The deliverable is a working, clickable prototype, not a gallery or a set of single screens. It opens from the product's real entry page (for example its home page). Menu, sidebar, tab, dialog, row "..." menu, form and button work as in the app; no element is left that does nothing when clicked.
-- Cases are reached from inside the flow, not shown as a separate list. The prototype has no "All screens" button and no yellow review notes.
-- Frame parts missing from the mockup (search, notifications, language menu and so on) are built from the app's own code and copy, never invented.
+- Deliver design work as a prototype with all its states.
+- Build every case: empty, loading, error, filled, first use, no permission, mobile, every role and every intermediate step.
+- It must be a working, clickable prototype, not a gallery or single screens.
+- It opens from the product's real entry page, for example its home page.
+- Menu, sidebar, tab, dialog, row "..." menu, form and button work as in the app.
+- No element may do nothing when clicked.
+- Reach cases from inside the flow, not from a separate list.
+- No "All screens" button. No yellow review notes.
+- Build missing frame parts (search, notifications, language menu) from the app's own code and copy, never invented.
 - Before delivery, click every clickable element on every screen, one by one, at 375 px and at desktop width.
+<!-- Why: A gallery of static screens hides dead buttons and missing states. Reviewers want to click through a real flow. -->
 
-## Order for interface work: measure mobile first, then best practice
-When a screen, component or published page changes, this order is not skipped:
-1. Render at 375 px and MEASURE. Looking at a screenshot and saying "looks fine" is not a measurement. Use numbers: `scrollWidth > clientWidth` (overflow), `documentElement.scrollWidth > innerWidth` (sideways scroll), touch target under 40 px, long text that does not wrap, truncated numbers.
-2. Then desktop width, with the same measurements.
-3. When both are clean, apply best practice: the `real-audit` design rules plus the project's own `DESIGN.md`. The project file wins.
-4. Fix in the source, not in the generated output. If a generator exists (script, template), fix it and regenerate.
-- A published interface change already fires the "externally visible" orchestration trigger (trigger 1 in the README; see `models-and-orchestration.md`); a separate reviewer verifies the measurement.
-- `real-audit` Design mode already asks for measured narrow-viewport checks; this order keeps the same idea with the specific numbers and the fix-in-source rule.
-- Difference, not resolved here: `design-rules.md` says not to invent a universal touch-target threshold, while the 40 px figure above comes from the original rule. The user decides which governs.
+## Order for interface work: measure mobile first
+Use this when a screen, component or published page changes. Never skip it.
+1. Render at 375 px and MEASURE. "Looks fine" in a screenshot is not a measurement.
+2. Use numbers: `scrollWidth > clientWidth` (overflow), `documentElement.scrollWidth > innerWidth` (sideways scroll), touch target under 40 px, long text that does not wrap, truncated numbers.
+3. Then desktop width, with the same measurements.
+4. When both are clean, apply best practice: the `real-audit` design rules plus the project's `DESIGN.md`. The project file wins.
+5. Fix in the source, not in the generated output. If a generator exists, fix it and regenerate.
+<!-- Why: Layouts that look fine on desktop can break on a narrow screen. Numbers catch what eyes miss. -->
+- A published interface change fires the "externally visible" trigger (trigger 1 in the README). A separate reviewer verifies the measurement.
+- `real-audit` Design mode already asks for measured narrow-viewport checks. This adds the numbers and the fix-in-source rule.
+- Open difference: `design-rules.md` says not to invent a universal touch-target threshold. The 40 px figure comes from the original rule. The user decides which governs.
