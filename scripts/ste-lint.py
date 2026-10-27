@@ -4,7 +4,7 @@ Flags sentences over 25 words (error) or 20 words (warning), and banned words.
 Ignores code blocks, inline code, links, tables, HTML tags and front matter.
 Exit code 1 when an error is found."""
 import re, sys
-BANNED = r"\b(should|may|might|ensure|make sure|utili[sz]e|e\.g\.|i\.e\.|etc\.?|via|prior to|in order to|confirm(?:s|ed)?|bot|bots)\b"
+BANNED = r"\b(should|may|might|ensure|make sure|utili[sz]e|e\.g\.|i\.e\.|etc\.?|via|prior to|in order to|bot|bots)\b"
 def sentences(text):
     out = []
     fence = False
@@ -23,6 +23,7 @@ def sentences(text):
         t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
         t = re.sub(r"<[^>]+>", " ", t)
         t = re.sub(r"^\s*([-*]|\d+\.)\s+", "", t)
+        t = re.sub(r"\*\*[^*]*\*\*", "X", t)  # bold labels are fixed names
         t = re.sub(r"[*_#>]", "", t).strip()
         if not t: continue
         for s in re.split(r"(?<=[.!?])\s+", t):

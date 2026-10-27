@@ -16,7 +16,8 @@ This glossary fixes one word for each idea. Use the word in the first column. Do
 ## Fixed terms
 | Use | Meaning | Do not use |
 |---|---|---|
-| verify | Prove with evidence: a source, a test or a measurement. | check, confirm, validate, ensure |
+| verify | Prove with evidence: a source, a test or a measurement. | check, validate, ensure |
+| confirm | Use only for an act of the user: the user says yes. Never use it as a synonym of verify. | |
 | test | Run something to find a result or a fault. | check (as a verb) |
 | ask | Put a question to the user and wait for the answer. | prompt, query, request |
 | user | The person who gives the task. | owner, operator |
