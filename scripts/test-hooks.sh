@@ -470,6 +470,9 @@ it('b', () => {})")"; expect_allow "a new test file (a move or rename has no old
   eq "turn log: root file" "$(cat "$TD/root")" "$TRR"
   eq "turn log: the state folder has mode 700" "$(ls -ld "$TD" | cut -c1-10)" "drwx------"
   eq "turn log: a state file has mode 600" "$(ls -l "$TD/last_request" | cut -c1-10)" "-rw-------"
+  HF=$(rs_handoff "$TRR")
+  eq "turn log: the handoff has clean_end false after UserPromptSubmit" "$(sed -nE 's/.*"clean_end":(true|false).*/\1/p' "$HF")" false
+  eq "turn log: the handoff file has mode 600" "$(ls -l "$HF" | cut -c1-10)" "-rw-------"
   run "$TL" "$(upj "$TR" "$(printf 'line one\nline two %s end' "$tltok")")"
   eq "turn log: newlines become spaces and a token is masked" "$(rd last_request)" "line one line two ghp_*** end"
   eq "turn log: last_request is one line" "$(wc -l < "$TD/last_request" | tr -d ' ')" 1
@@ -543,6 +546,8 @@ it('b', () => {})")"; expect_allow "a new test file (a move or rename has no old
   eq "turn log: no stderr on Stop" "$ERR" ""
   isnum "turn log: turn_end is a number" "$(rd turn_end)"
   eq "turn log: the last STATE line wins" "$(rd state)" "blocked - log in at the site"
+  eq "turn log: the handoff has clean_end true after Stop" "$(sed -nE 's/.*"clean_end":(true|false).*/\1/p' "$HF")" true
+  has "turn log: the handoff holds the state line of the Stop" "$(cat "$HF")" '"state_line":"blocked - log in at the site"'
   run "$TL" "$(stj "$TR" false "STATE: failed - key $tltok")"
   eq "turn log: the state is masked" "$(rd state)" "failed - key ghp_***"
   run "$TL" "$(stj "$TR" false "STATE: done $(rpt c 300)")"

@@ -128,6 +128,8 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - `/real-status` prints at most 8 lines: the branch, the contract, the last commands, the last turn and the background jobs. It makes no model call. `scripts/real-status.sh` runs in any shell.
 - `/real-ship` commits, pushes and opens the PR or MR in separate steps. It refuses on `main` and never merges. Read [docs/real-ship.md](docs/real-ship.md).
 - `scripts/real-ship.sh` never uses `git add -A`, never forces a push and never skips a hook. The command template is `commands/real-ship.md`.
+- The context hook `real-context.sh` runs at session start. It gives the agent repo facts: the last request, git, the contract and your open PRs. Memory notes are optional. Each line is masked.
+- The same hook gives you a recap of 3 lines or less. It shows the last request, how the last turn ended, and the git and contract facts.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 
