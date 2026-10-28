@@ -79,10 +79,10 @@ wf() { mkdir -p "$(dirname "$R/$1")"; printf '%s\n' "$2" > "$R/$1"; }
 
 # ---------- static checks ----------
 section "static checks"
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
   if sh -n "$f" 2>/dev/null; then ok; else bad "syntax: $f"; fi
 done
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
   if [ -x "$f" ]; then ok; else bad "not executable: $f"; fi
 done
 for f in "$CL/settings.example.json" "$H/codex/hooks.example.json"; do
@@ -448,6 +448,350 @@ it('b', () => {})")"; expect_allow "a new test file (a move or rename has no old
   rm -f "$TMP"/notify-send.log
   run "$N" '{"hook_event_name":"PermissionRequest","tool_name":"Bash"}' "PATH=$stubs:$PATH" REAL_NOTIFY_OS=Linux
   has "Codex PermissionRequest is sent" "$(cat "$TMP/notify-send.log" 2>/dev/null)" "Bash"
+
+  section "claude real-turn-log ($label)"
+  . "$CL/real-state-lib.sh"
+  TL=$CL/real-turn-log.sh
+  XS=$TMP/xstate; rm -rf "$XS"; export XDG_STATE_HOME=$XS
+  rpt() { awk -v c="$1" -v n="$2" 'BEGIN { for (i = 0; i < n; i++) printf "%s", c }'; }
+  # Multi-byte characters from octal bytes: 2, 3 and 4 bytes. The file holds no such character.
+  mb2=$(printf '\303\251'); mb3=$(printf '\342\202\254'); mb4=$(printf '\360\237\230\200')
+  upj() { printf '{"hook_event_name":"UserPromptSubmit","cwd":"%s","prompt":"%s"}' "$1" "$(js "$2")"; }
+  stj() { printf '{"hook_event_name":"Stop","cwd":"%s","stop_hook_active":%s,"last_assistant_message":"%s"}' "$1" "$2" "$(js "$3")"; }
+  isnum() { case $2 in ''|*[!0-9]*) bad "$1" "not a number: '$2'" ;; *) ok ;; esac; }
+  rd() { rs_read "$TD" "$1" "$TRR"; }
+  tltok=ghp_$(rpt B 30)
+  mkrepo feature; TR=$R; TRR=$(rs_root "$TR"); TD=$(rs_dir "$TRR")
+  run "$TL" "$(upj "$TR" "fix the bug")"
+  expect_silent "turn log: UserPromptSubmit prints nothing"
+  eq "turn log: no stderr" "$ERR" ""
+  isnum "turn log: turn_start is a number" "$(rd turn_start)"
+  eq "turn log: last_request" "$(rd last_request)" "fix the bug"
+  eq "turn log: root file" "$(cat "$TD/root")" "$TRR"
+  eq "turn log: the state folder has mode 700" "$(ls -ld "$TD" | cut -c1-10)" "drwx------"
+  eq "turn log: a state file has mode 600" "$(ls -l "$TD/last_request" | cut -c1-10)" "-rw-------"
+  run "$TL" "$(upj "$TR" "$(printf 'line one\nline two %s end' "$tltok")")"
+  eq "turn log: newlines become spaces and a token is masked" "$(rd last_request)" "line one line two ghp_*** end"
+  eq "turn log: last_request is one line" "$(wc -l < "$TD/last_request" | tr -d ' ')" 1
+  at=@ # the URL userinfo separator, built at run time so the file holds no email-like text
+  run "$TL" "$(upj "$TR" "curl -H 'Authorization: Bearer abcdefgh12345678' https://usr:pw0rd${at}host.invalid/x password=hunter2 sk-abcdefghijkl")"
+  lr=$(rd last_request)
+  hasnt "turn log: a bearer value is masked" "$lr" "abcdefgh12345678"
+  hasnt "turn log: a URL password is masked" "$lr" "pw0rd"
+  hasnt "turn log: a password value is masked" "$lr" "hunter2"
+  hasnt "turn log: a key prefix token is masked" "$lr" "abcdefghijkl"
+  run "$TL" "$(upj "$TR" "$(rpt a 300)")"
+  lr=$(rd last_request); eq "turn log: last_request is cut to 160 characters" "${#lr}" 160
+  run "$TL" "$(upj "$TR" "$(rpt a 154) $tltok")"
+  lr=$(rd last_request)
+  eq "turn log: a masked prompt is cut to 160 characters" "${#lr}" 160
+  hasnt "turn log: a token at the cut is never half visible (mask, then cut)" "$lr" B
+  has "turn log: the mask prefix stays" "$lr" " ghp_"
+  for mb in "$mb2" "$mb3" "$mb4"; do
+    run "$TL" "$(upj "$TR" "a$(rpt "$mb" 200)")"
+    eq "turn log: a cut counts characters, not bytes ($(printf '%s' "$mb" | wc -c | tr -d ' ') bytes each)" "$(rd last_request)" "a$(rpt "$mb" 159)"
+  done
+  # Token shapes are built at run time, so the file holds no text that the pre-push scan blocks.
+  pkm="-----BEGIN RSA PRIVATE ""KEY-----"
+  run "$TL" "$(upj "$TR" "x glpat-$(rpt g 24) y")"
+  eq "turn log: a GitLab token is masked" "$(rd last_request)" "x glpat-*** y"
+  run "$TL" "$(upj "$TR" "x sk_live_$(rpt s 24) rk_live_$(rpt r 24) sk_test_$(rpt t 24) y")"
+  eq "turn log: Stripe keys are masked" "$(rd last_request)" "x sk_live_*** rk_live_*** sk_test_*** y"
+  run "$TL" "$(upj "$TR" "$(printf 'x %s\nMIIEabcdef\nghijklmn' "$pkm")")"
+  eq "turn log: the rest of a private key line is masked" "$(rd last_request)" "x $pkm ***"
+  run "$TL" "$(upj "$TR" "the real request")"
+  # A real turn ended 10 minutes ago with a state. A /real-status turn must not change that record.
+  run "$TL" "$(stj "$TR" false "$(printf 'Work finished.\nSTATE: done - x')")"
+  tn=$(date +%s)
+  rs_write "$TD" turn_start "$((tn - 700))" "$TRR"; rs_write "$TD" turn_end "$((tn - 600))" "$TRR"
+  rs_write "$TD" jobs "old: job" "$TRR"
+  run "$TL" "$(upj "$TR" "/real-status")"
+  expect_silent "turn log: /real-status prints nothing"
+  eq "turn log: /real-status keeps last_request" "$(rd last_request)" "the real request"
+  eq "turn log: /real-status keeps turn_start" "$(rd turn_start)" "$((tn - 700))"
+  eq "turn log: /real-status keeps turn_end" "$(rd turn_end)" "$((tn - 600))"
+  isnum "turn log: /real-status writes status_prompt" "$(rd status_prompt)"
+  run "$TL" "$(stj "$TR" false "Here is the status.")"
+  expect_silent "turn log: the Stop of a /real-status turn prints nothing"
+  eq "turn log: the Stop of a /real-status turn keeps turn_end" "$(rd turn_end)" "$((tn - 600))"
+  eq "turn log: the Stop of a /real-status turn keeps the state" "$(rd state)" "done - x"
+  eq "turn log: the Stop of a /real-status turn keeps jobs" "$(cat "$TD/jobs")" "old: job"
+  run "$TL" "$(stj "$TR" true "Here is the status again.")"
+  eq "turn log: a retry Stop of a /real-status turn keeps the state" "$(rd state)" "done - x"
+  run "$TL" "$(upj "$TR" "/real-status now")"
+  eq "turn log: /real-status with an argument keeps last_request" "$(rd last_request)" "the real request"
+  eq "turn log: /real-status with an argument keeps turn_start" "$(rd turn_start)" "$((tn - 700))"
+  run "$TL" "$(upj "$TR" "/plug:real-status")"
+  eq "turn log: the plugin form keeps last_request" "$(rd last_request)" "the real request"
+  eq "turn log: the plugin form keeps turn_start" "$(rd turn_start)" "$((tn - 700))"
+  run "$TL" "$(upj "$TR" "/real-statusx")"
+  eq "turn log: another command name replaces last_request" "$(rd last_request)" "/real-statusx"
+  [ ! -e "$TD/status_prompt" ] && ok || bad "turn log: a real prompt removes status_prompt"
+  [ "$(rd turn_start)" != "$((tn - 700))" ] && ok || bad "turn log: a real prompt writes turn_start"
+  run "$TL" "$(stj "$TR" false "$(printf 'Done again.\nSTATE: done - y')")"
+  eq "turn log: the next Stop writes the state again" "$(rd state)" "done - y"
+  [ "$(rd turn_end)" != "$((tn - 600))" ] && ok || bad "turn log: the next Stop writes turn_end"
+  [ ! -e "$TD/jobs" ] && ok || bad "turn log: the next Stop removes jobs"
+  run "$TL" "$(upj "$TR" "what does /real-status do")"
+  eq "turn log: a prompt that only names /real-status replaces last_request" "$(rd last_request)" "what does /real-status do"
+  [ ! -e "$TD/status_prompt" ] && ok || bad "turn log: a prompt that only names /real-status is a real prompt"
+  run "$TL" "$(upj "$TR" "the real request")"
+
+  rep1=$(printf 'Intro line\n\nSTATE: failed - old\nmore text\n**STATE:** blocked - log in at the site\nfinal words after it\n')
+  run "$TL" "$(stj "$TR" false "$rep1")"
+  expect_silent "turn log: Stop prints nothing"
+  eq "turn log: no stderr on Stop" "$ERR" ""
+  isnum "turn log: turn_end is a number" "$(rd turn_end)"
+  eq "turn log: the last STATE line wins" "$(rd state)" "blocked - log in at the site"
+  run "$TL" "$(stj "$TR" false "STATE: failed - key $tltok")"
+  eq "turn log: the state is masked" "$(rd state)" "failed - key ghp_***"
+  run "$TL" "$(stj "$TR" false "STATE: done $(rpt c 300)")"
+  st=$(rd state); eq "turn log: the state is cut to 200 characters" "${#st}" 200
+  run "$TL" "$(stj "$TR" true "STATE: done")"
+  eq "turn log: stop_hook_active still writes the state" "$(rd state)" "done"
+  run "$TL" "$(stj "$TR" false "all fine, no marker")"
+  [ ! -e "$TD/state" ] && ok || bad "turn log: no STATE line removes the state file"
+  eq "turn log: last_request survives a Stop" "$(rd last_request)" "the real request"
+  [ ! -e "$TD/jobs" ] && ok || bad "turn log: no background_tasks key gives no jobs file"
+
+  bt='"background_tasks":[{"type":"bash","description":"dev server","id":"b1"},{"type":"agent","command":"sleep 30 token=abcdef123456"},{"type":"bash","description":"'$(rpt d 200)'"}]'
+  jj() { printf '{"hook_event_name":"Stop","cwd":"%s","stop_hook_active":false,"last_assistant_message":"STATE: done",%s}' "$TR" "$1"; }
+  run "$TL" "$(jj "$bt")"
+  expect_silent "turn log: Stop with background_tasks prints nothing"
+  if [ "$NOJQ" = 0 ]; then
+    eq "turn log: a job line from a description" "$(sed -n 1p "$TD/jobs")" "bash: dev server"
+    eq "turn log: a job line from a command, masked" "$(sed -n 2p "$TD/jobs")" "agent: sleep 30 token=***"
+    j3=$(sed -n 3p "$TD/jobs"); eq "turn log: a job line is cut to 120 characters" "${#j3}" 120
+    hasnt "turn log: no secret in jobs" "$(cat "$TD/jobs")" "abcdef123456"
+    t7='{"type":"bash","description":"t"}'
+    run "$TL" "$(jj "\"background_tasks\":[$t7,$t7,$t7,$t7,$t7,$t7,$t7]")"
+    eq "turn log: jobs holds 5 lines at most" "$(wc -l < "$TD/jobs" | tr -d ' ')" 5
+    run "$TL" "$(jj '"background_tasks":[{"type":"agent","description":"x","agent_id":"a1"}]')"
+    eq "turn log: an agent_id inside a task is not a subagent" "$(cat "$TD/jobs")" "agent: x"
+  else
+    [ ! -e "$TD/jobs" ] && ok || bad "turn log: without jq no jobs file"
+    rs_write "$TD" jobs "old: job" "$TRR"
+    run "$TL" "$(jj "$bt")"
+    [ ! -e "$TD/jobs" ] && ok || bad "turn log: without jq an old jobs file is removed"
+  fi
+  run "$TL" "$(jj '"background_tasks":[]')"
+  [ ! -e "$TD/jobs" ] && ok || bad "turn log: an empty list removes the jobs file"
+
+  rs_write "$TD" turn_start 1 "$TRR"; rs_write "$TD" turn_end 1 "$TRR"
+  run "$TL" "$(printf '{"hook_event_name":"UserPromptSubmit","agent_id":"sub1","cwd":"%s","prompt":"from a subagent"}' "$TR")"
+  expect_silent "turn log: a subagent prompt prints nothing"
+  eq "turn log: a subagent prompt is ignored (turn_start)" "$(rd turn_start)" 1
+  eq "turn log: a subagent prompt is ignored (last_request)" "$(rd last_request)" "the real request"
+  run "$TL" "$(printf '{"hook_event_name":"Stop","agent_id":"sub1","cwd":"%s","last_assistant_message":"STATE: failed - x"}' "$TR")"
+  eq "turn log: a subagent Stop is ignored (turn_end)" "$(rd turn_end)" 1
+  hasnt "turn log: a subagent Stop is ignored (state)" "$(rd state)" "failed"
+
+  mkrepo feature; TR2=$R; TRR2=$(rs_root "$TR2"); TD2=$(rs_dir "$TRR2")
+  run "$TL" "$(upj "$TR2" "second repo request")"
+  [ "$TD" != "$TD2" ] && ok || bad "turn log: two repos get two state folders"
+  eq "turn log: the second repo has its own request" "$(rs_read "$TD2" last_request "$TRR2")" "second repo request"
+  eq "turn log: the first repo keeps its request" "$(rd last_request)" "the real request"
+
+  printf '%s\n' "/somewhere/else" > "$TD/root"
+  eq "turn log: a root mismatch reads as empty" "$(rs_read "$TD" last_request "$TRR")" ""
+  run "$TL" "$(upj "$TR" "text for the wrong owner")"
+  expect_silent "turn log: a root mismatch prints nothing"
+  eq "turn log: a folder of another root is not changed" "$(cat "$TD/last_request")" "the real request"
+  printf '%s\n' "$TRR" > "$TD/root"
+
+  printf 'x' > "$TMP/notadir"
+  run "$TL" "$(upj "$TR" "hello")" XDG_STATE_HOME="$TMP/notadir"
+  expect_silent "turn log: an unwritable state folder (prompt)"
+  eq "turn log: an unwritable state folder gives no stderr (prompt)" "$ERR" ""
+  run "$TL" "$(stj "$TR" false "STATE: done")" XDG_STATE_HOME="$TMP/notadir"
+  expect_silent "turn log: an unwritable state folder (Stop)"
+  eq "turn log: an unwritable state folder gives no stderr (Stop)" "$ERR" ""
+  run "$TL" "$(upj "$TR" "hello")" XDG_STATE_HOME= HOME=
+  expect_silent "turn log: no HOME and no XDG_STATE_HOME"
+  eq "turn log: no base folder gives no stderr" "$ERR" ""
+
+  mkrepo feature; TR3=$R; TD3=$(rs_dir "$(rs_root "$TR3")")
+  run "$TL" "$(upj "$TR3" "hello")" REAL_TURN_LOG=0
+  expect_silent "turn log: REAL_TURN_LOG=0"
+  [ ! -e "$TD3" ] && ok || bad "turn log: REAL_TURN_LOG=0 writes nothing"
+  run "$TL" "$(printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"%s"}' "$TR3")"
+  expect_silent "turn log: another event is ignored"
+  [ ! -e "$TD3" ] && ok || bad "turn log: another event writes nothing"
+  run "$TL" 'not json'; expect_silent "turn log: input that is not JSON"
+  run "$TL" ''; expect_silent "turn log: empty input"
+  [ ! -e "$TD3" ] && ok || bad "turn log: bad input writes nothing"
+
+  section "claude notify Stop ($label)"
+  N=$CL/notify.sh
+  nt=ghp_$(rpt Z 30)
+  sb=$TMP/stubs2; rm -rf "$sb"; mkdir -p "$sb"
+  printf '#!/bin/sh\nprintf "[%%s]\\n" "$@" >> "%s/ns2.log"\n' "$TMP" > "$sb/notify-send"
+  printf '#!/bin/sh\nprintf "[%%s]\\n" "$@" >> "%s/osa2.log"\n' "$TMP" > "$sb/osascript"
+  printf '#!/bin/sh\ncase "$*" in *%s*) echo FAIL >> "%s/curl2.log"; exit 1 ;; esac\nprintf "[%%s]\\n" "$@" >> "%s/curl2.log"\n' "$nt" "$TMP" "$TMP" > "$sb/curl"
+  chmod +x "$sb"/notify-send "$sb"/osascript "$sb"/curl
+  mkrepo feature; NR=$R; NRR=$(rs_root "$NR"); NPJ=$(basename "$NRR"); ND=$(rs_dir "$NRR")
+  nstart() { rs_write "$ND" turn_start "$(( $(date +%s) - $1 ))" "$NRR"; }
+  nrun() { j=$1; shift; rm -f "$TMP/ns2.log" "$TMP/osa2.log" "$TMP/curl2.log"; run "$N" "$j" "PATH=$sb:$PATH" REAL_NOTIFY_OS=Linux "$@"; }
+  nlog() { cat "$TMP/ns2.log" 2>/dev/null; }
+  nquiet() { # nquiet NAME: exit 0, no output and no banner
+    if [ "$RC" -eq 0 ] && [ -z "$OUT" ] && [ ! -e "$TMP/ns2.log" ] && [ ! -e "$TMP/osa2.log" ]; then ok; else bad "$1" "rc=$RC out=$OUT banner=$(nlog)"; fi
+  }
+  nbanner() { # nbanner NAME TITLE BODY: exit 0, no output and exactly one banner with this title and body
+    got=$(nlog); want=$(printf '[%s]\n[%s]' "$2" "$3")
+    if [ "$RC" -eq 0 ] && [ -z "$OUT" ] && [ "$got" = "$want" ]; then ok; else bad "$1" "rc=$RC out=$OUT got=$got want=$want"; fi
+  }
+  nstart 300
+  nrun "$(stj "$NR" false "$(printf 'Work finished.\n\nSTATE: done\nbye')")"
+  nbanner "notify Stop: 300 s gives one banner with the done text" "Done - $NPJ" "The turn is done."
+  nrun "$(stj "$NR" false "STATE: done - all tests pass")"
+  nbanner "notify Stop: done with a text" "Done - $NPJ" "all tests pass"
+  nrun "$(stj "$NR" false "$(printf 'a\n**STATE:** blocked - log in at the site\nz')")"
+  nbanner "notify Stop: blocked" "Waiting for you - $NPJ" "log in at the site"
+  nrun "$(stj "$NR" false "STATE: failed - tests red")"
+  nbanner "notify Stop: failed" "Failed - $NPJ" "tests red"
+  nrun "$(stj "$NR" false "STATE: Blocked: need the key")"
+  nbanner "notify Stop: a capital and a colon" "Waiting for you - $NPJ" "need the key"
+  nrun "$(stj "$NR" false "STATE: FAILED tests red")"
+  nbanner "notify Stop: upper case and a space" "Failed - $NPJ" "tests red"
+  nrun "$(stj "$NR" false "STATE: waiting for review")"
+  nbanner "notify Stop: another state text" "Turn ended - $NPJ" "waiting for review"
+  nrun "$(stj "$NR" false "STATE: donezo")"
+  nbanner "notify Stop: a word that starts with done is another state" "Turn ended - $NPJ" "donezo"
+  nrun "$(stj "$NR" false "$(printf 'STATE: failed - old\nSTATE: done - new')")"
+  nbanner "notify Stop: the last STATE line wins" "Done - $NPJ" "new"
+  nrun "$(stj "$NR" false "$(printf '# Heading line\nsecond line')")"
+  nbanner "notify Stop: no STATE line gives the first line" "Turn ended - $NPJ" "Heading line"
+  nrun "$(stj "$NR" false "")"
+  nbanner "notify Stop: an empty reply" "Turn ended - $NPJ" "The agent stopped."
+  nrun "$(stj "$NR" false "STATE: blocked - $(rpt x 300)")"
+  got=$(nlog | sed -n 2p); eq "notify Stop: the body is cut to 160 characters" "${#got}" 162
+  nrun "$(stj "$NR" false "STATE: failed - $(rpt "$mb2" 200)")"
+  nbanner "notify Stop: a body of 200 characters is cut to 160 (2 bytes each)" "Failed - $NPJ" "$(rpt "$mb2" 160)"
+  nrun "$(stj "$NR" false "STATE: failed - $(rpt "$mb4" 200)")"
+  nbanner "notify Stop: a body of 200 characters is cut to 160 (4 bytes each)" "Failed - $NPJ" "$(rpt "$mb4" 160)"
+  nrun "$(stj "$NR" false "b$(rpt "$mb3" 200)")"
+  nbanner "notify Stop: a first line is cut to 160 characters (3 bytes each)" "Turn ended - $NPJ" "b$(rpt "$mb3" 159)"
+  nrun "$(stj "$NR" false "STATE: failed - --force is needed")"
+  nbanner "notify Stop: a body that starts with a dash loses it" "Failed - $NPJ" "force is needed"
+  nrun "$(stj "$NR" false "- item one")"
+  nbanner "notify Stop: a first line that starts with a dash loses it" "Turn ended - $NPJ" "item one"
+  nrun "$(stj "$NR" false "STATE: --odd state")"
+  nbanner "notify Stop: another state text that starts with a dash loses it" "Turn ended - $NPJ" "odd state"
+  hasnt "notify Stop: no notify-send argument starts with a dash" "$(nlog)" "[-"
+  nrun "$(stj "$NR" false "$nt is the first line")"
+  hasnt "notify Stop: a token in the first line is masked" "$(nlog)" "$nt"
+  has "notify Stop: the mask prefix stays" "$(nlog)" "ghp_***"
+
+  nstart 10
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: 10 s gives no banner"
+  nstart 300
+  nrun "$(stj "$NR" true "STATE: done")"
+  nquiet "notify Stop: stop_hook_active gives no banner"
+  nrun "$(printf '{"hook_event_name":"Stop","agent_id":"sub1","cwd":"%s","last_assistant_message":"STATE: done"}' "$NR")"
+  nquiet "notify Stop: a subagent gives no banner"
+  run "$TL" "$(upj "$NR" "/real-status")"
+  [ -n "$(rs_read "$ND" status_prompt "$NRR")" ] && ok || bad "notify Stop: the hook writes the status marker"
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: the Stop of a /real-status turn gives no banner"
+  run "$TL" "$(upj "$NR" "the next real request")"
+  [ ! -e "$ND/status_prompt" ] && ok || bad "notify Stop: a real prompt removes the status marker"
+  nstart 300
+  nrun "$(stj "$NR" false "STATE: done - next")"
+  nbanner "notify Stop: the next real turn gives a banner again" "Done - $NPJ" "next"
+
+  # A turn that a finished background job starts has no prompt. The banner counts from the last prompt of the user.
+  # A /real-status prompt counts as a prompt, so the status turn itself gets no banner.
+  wt=$(date +%s)
+  wrd() { rs_read "$ND" "$1" "$NRR"; }
+  wake_reset() { # wake_reset AGE: a real turn that ended 880 s ago, and a /real-status prompt AGE seconds ago
+    rs_write "$ND" turn_start "$((wt - 900))" "$NRR"; rs_write "$ND" turn_end "$((wt - 880))" "$NRR"
+    rs_write "$ND" state "blocked - waiting for the suite" "$NRR"; rs_write "$ND" jobs "bash: suite" "$NRR"
+    rs_write "$ND" status_prompt "$((wt - $1))" "$NRR"
+  }
+  wake_reset 5
+  run "$TL" "$(stj "$NR" false "feat/x  0 changed")"
+  nrun "$(stj "$NR" false "feat/x  0 changed")"
+  nquiet "notify Stop: the /real-status turn itself gives no banner"
+  eq "turn log: the /real-status turn keeps turn_end" "$(wrd turn_end)" "$((wt - 880))"
+  eq "turn log: the /real-status turn keeps the state" "$(wrd state)" "blocked - waiting for the suite"
+  eq "turn log: the /real-status turn keeps jobs" "$(wrd jobs)" "bash: suite"
+  wake_reset 600
+  wr=$(printf 'The suite passed.\nSTATE: done - e2e suite green')
+  run "$TL" "$(stj "$NR" false "$wr")"
+  nrun "$(stj "$NR" false "$wr")"
+  nbanner "notify Stop: a wake turn 600 s after /real-status gives one banner" "Done - $NPJ" "e2e suite green"
+  eq "turn log: a wake turn with a STATE line writes the state" "$(wrd state)" "done - e2e suite green"
+  [ "$(wrd turn_end)" != "$((wt - 880))" ] && ok || bad "turn log: a wake turn with a STATE line writes turn_end"
+  [ ! -e "$ND/jobs" ] && ok || bad "turn log: a wake turn with a STATE line writes jobs as for any Stop"
+  isnum "turn log: a wake Stop does not remove status_prompt" "$(wrd status_prompt)"
+  wake_reset 300
+  run "$TL" "$(stj "$NR" false "The suite is still running.")"
+  nrun "$(stj "$NR" false "The suite is still running.")"
+  nbanner "notify Stop: a wake turn with no STATE line 300 s after the marker" "Turn ended - $NPJ" "The suite is still running."
+  eq "turn log: a wake turn with no STATE line keeps turn_end" "$(wrd turn_end)" "$((wt - 880))"
+  eq "turn log: a wake turn with no STATE line keeps the state" "$(wrd state)" "blocked - waiting for the suite"
+  wake_reset 30
+  nrun "$(stj "$NR" false "STATE: done - quick")"
+  nquiet "notify Stop: a wake turn 30 s after the marker gives no banner"
+  wake_reset 5
+  printf 'abc\n' > "$ND/status_prompt"; nstart 300
+  nrun "$(stj "$NR" false "STATE: done - c")"
+  nbanner "notify Stop: a corrupt status_prompt is ignored" "Done - $NPJ" "c"
+  rm -f "$ND/status_prompt" "$ND/jobs"; nstart 300
+  nrun "$(stj "$NR" false "STATE: done")" REAL_NOTIFY=0
+  nquiet "notify Stop: REAL_NOTIFY=0"
+  printf 'abc\n' > "$ND/turn_start"
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: a corrupt turn_start gives no banner"
+  : > "$ND/turn_start"
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: an empty turn_start gives no banner"
+  rm -f "$ND/turn_start"
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: a missing turn_start gives no banner"
+  mkrepo feature; NR2=$R
+  nrun "$(stj "$NR2" false "STATE: done")"
+  nquiet "notify Stop: no state folder gives no banner"
+  nstart 300
+  printf '%s\n' "/somewhere/else" > "$ND/root"
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: a state folder of another root gives no banner"
+  printf '%s\n' "$NRR" > "$ND/root"
+  nrun "$(stj "$NR" false "STATE: done")" XDG_STATE_HOME=
+  nquiet "notify Stop: no state base folder gives no banner"
+
+  nstart 30
+  nrun "$(stj "$NR" false "STATE: done")"
+  nquiet "notify Stop: 30 s gives no banner by default"
+  nrun "$(stj "$NR" false "STATE: done")" REAL_NOTIFY_MIN_SECONDS=10
+  nbanner "notify Stop: REAL_NOTIFY_MIN_SECONDS=10 lowers the threshold" "Done - $NPJ" "The turn is done."
+  nrun "$(stj "$NR" false "STATE: done")" REAL_NOTIFY_MIN_SECONDS=abc
+  nquiet "notify Stop: a threshold that is not a number counts as 120"
+  printf 'notify.min-seconds = 10\n' > "$NR/.real-hooks"
+  nrun "$(stj "$NR" false "STATE: done")"
+  nbanner "notify Stop: notify.min-seconds in .real-hooks lowers the threshold" "Done - $NPJ" "The turn is done."
+  rm -f "$NR/.real-hooks"
+  nstart 300
+  nrun "$(stj "$NR" false "STATE: done")" REAL_NOTIFY_MIN_SECONDS=abc
+  nbanner "notify Stop: 300 s passes the default threshold" "Done - $NPJ" "The turn is done."
+
+  nrun "$(stj "$NR" false "STATE: done")" REAL_NOTIFY_OS=Darwin
+  has "notify Stop: osascript gets the title" "$(cat "$TMP/osa2.log" 2>/dev/null)" "[Done - $NPJ]"
+  has "notify Stop: osascript gets the body" "$(cat "$TMP/osa2.log" 2>/dev/null)" "[The turn is done.]"
+  [ ! -e "$TMP/ns2.log" ] && ok || bad "notify Stop: notify-send is not called on macOS"
+  nrun "$(stj "$NR" false "STATE: done")"
+  [ ! -e "$TMP/curl2.log" ] && ok || bad "notify Stop: curl is not called without a webhook"
+  nrun "$(stj "$NR" false "STATE: blocked - key $nt")" REAL_NOTIFY_WEBHOOK=http://hook.invalid/x REAL_NOTIFY_WEBHOOK_FIELD=msg
+  eq "notify Stop: exit 0 with a webhook" "$RC" 0
+  has "notify Stop: the webhook URL comes from the environment" "$(cat "$TMP/curl2.log" 2>/dev/null)" "http://hook.invalid/x"
+  has "notify Stop: the webhook text is title and body" "$(cat "$TMP/curl2.log" 2>/dev/null)" "{\"msg\":\"Waiting for you - $NPJ: key ghp_***\"}"
+  hasnt "notify Stop: the curl stub did not see the token" "$(cat "$TMP/curl2.log" 2>/dev/null)" "FAIL"
+  hasnt "notify Stop: the token is in no stub log" "$(cat "$TMP/ns2.log" "$TMP/osa2.log" "$TMP/curl2.log" 2>/dev/null)" "$nt"
+  rm -f "$TMP/curl2.log"; "$sb/curl" "x $nt" 2>/dev/null
+  has "notify Stop: the curl stub fails on a token (stub check)" "$(cat "$TMP/curl2.log" 2>/dev/null)" "FAIL"
+  rm -f "$TMP/curl2.log" "$TMP/ns2.log" "$TMP/osa2.log"
+  unset XDG_STATE_HOME
 
   section "claude PreToolUse open guard ($label)"
   O=$CL/real-open-guard.sh
