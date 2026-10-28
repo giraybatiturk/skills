@@ -1266,6 +1266,7 @@ EOF
   has "SCOPE is listed" "$OUT" "src/feature/**, docs/*.md, notes.txt"
   has "DO NOT TOUCH is listed" "$OUT" "src/payments/**"
   has "it uses additionalContext" "$OUT" "additionalContext"
+  has "it says the claims file is always allowed" "$OUT" "claims.md is always allowed"
   [ "${#OUT}" -le 1400 ] && ok || bad "the start message is too long: ${#OUT}"
   mkcontract draft
   run "$CT" "$(stj)"; has "a draft is named" "$OUT" "draft"

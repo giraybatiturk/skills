@@ -20,7 +20,7 @@ else
   msg="real contract '$(rc_header "$f" Task)' ($status). SCOPE: $(one_line SCOPE). DO NOT TOUCH: $(one_line 'DO NOT TOUCH')."
   case $status in
     draft) msg="$msg The contract is a draft. It is not enforced. Wait for the user to approve it." ;;
-    active) msg="$msg Edits outside SCOPE need the user. Prove each DONE WHEN item in .real/claims.md." ;;
+    active) msg="$msg Edits outside SCOPE need the user. The file .real/claims.md is always allowed: it is not part of SCOPE. Prove each DONE WHEN item there, one line each: N | done | e3, e5 | note." ;;
   esac
 fi
 msg=$(printf '%s' "$msg" | cut -c1-1200)
