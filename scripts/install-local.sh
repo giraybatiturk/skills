@@ -4,8 +4,8 @@ set -euo pipefail
 # For the optional real.md working rules see scripts/install-real-md.sh (backs up first).
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 dest=${1:?Usage: bash scripts/install-local.sh DESTINATION}
-names=(real-start real-brainstorm real-plan real-audit real-check real-test real-research)
-sources=(product/real-start product/real-brainstorm product/real-plan product/real-audit engineering/real-check engineering/real-test engineering/real-research)
+names=(real-start real-brainstorm real-plan real-audit real-check real-test real-research real-measure)
+sources=(product/real-start product/real-brainstorm product/real-plan product/real-audit engineering/real-check engineering/real-test engineering/real-research product/real-measure)
 legacy=(real-grill real-feature-gate real-product-audit real-module-audit real-design-audit real-design-rules real-perf-audit)
 require_file() {
   if [[ ! -f "$1" ]]; then
@@ -28,6 +28,9 @@ for ref in design-rules orchestration product module design performance security
 done
 for ref in discovery feature-gate; do
   require_file "$repo/skills/product/real-plan/references/$ref.md"
+done
+for file in scripts/stats.mjs references/metrics.md references/sources.md; do
+  require_file "$repo/skills/product/real-measure/$file"
 done
 for ref in techniques debate market; do
   require_file "$repo/skills/product/real-brainstorm/references/$ref.md"
@@ -52,4 +55,4 @@ for i in "${!names[@]}"; do
   ln -s "$repo/skills/${sources[$i]}" "$target"
   test -f "$target/SKILL.md"
 done
-printf 'Installed and verified all seven workflows in %s\n' "$dest"
+printf 'Installed and verified all eight workflows in %s\n' "$dest"

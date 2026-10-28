@@ -1,10 +1,10 @@
 ---
 name: real-test
-description: "Test the key user flows of your own web app (local, staging or any URL you own) with persistent Playwright tests: e2e test, uçtan uca test, kullanıcı akışı testi, regression tests, test my app. Uses the planner, generator and healer agents of Playwright inside your coding agent. It explores the app, shows a plan for approval and writes tests into your repo. It runs them at desktop 1280 and phone 375 width (optionally Firefox and WebKit). It heals failures once. It reports passed, failed, fixme and blocked flows, with screenshots, console and network errors, accessibility findings and a visual comparison with the last run. Optional CI workflow. Reruns are plain npx playwright test, with no model. Runs on your machine, with no API key and no telemetry. Stops before any final submit (send, delete, pay, invite, publish) unless you allow writes on a non-production target. For a rule-based read-only scan of any public URL use real-check. For expert judgment on your own product use real-audit. (v0.13.1)"
+description: "Test the key user flows of your own web app (local, staging or any URL you own) with persistent Playwright tests: e2e test, uçtan uca test, kullanıcı akışı testi, regression tests, test my app. Uses the planner, generator and healer agents of Playwright inside your coding agent. It explores the app, shows a plan for approval and writes tests into your repo. It runs them at desktop 1280 and phone 375 width (optionally Firefox and WebKit). It heals failures once. It reports passed, failed, fixme and blocked flows, with screenshots, console and network errors, accessibility findings and a visual comparison with the last run. Optional CI workflow. Reruns are plain npx playwright test, with no model. Runs on your machine, with no API key and no telemetry. Stops before any final submit (send, delete, pay, invite, publish) unless you allow writes on a non-production target. For a rule-based read-only scan of any public URL use real-check. For expert judgment on your own product use real-audit. (v0.14.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.13.1
+  version: 0.14.0
   source: https://github.com/giraybatiturk/skills
 ---
 

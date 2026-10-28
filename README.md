@@ -1,6 +1,6 @@
 # Skills for real AI product leads
 
-Seven connected workflows for deciding what to build, proving what exists, and improving products with evidence.
+Eight connected workflows for deciding what to build, proving what exists, measuring what shipped, and improving products with evidence.
 
 ## How they fit together
 
@@ -14,6 +14,11 @@ flowchart LR
   K --> A["<b>real-audit</b><br/>in-depth review"]
   T -.-> A
   A -.-> T
+  T --> L["release"]
+  A --> L
+  L --> M["<b>real-measure</b><br/>did it work?"]
+  M -.-> P
+  M -.-> B
   subgraph side["helpers, usable any time"]
     R["<b>real-research</b><br/>primary sources"]
     C["<b>real-check</b><br/>any public URL"]
@@ -26,15 +31,15 @@ flowchart LR
   classDef helper fill:#ffffff,stroke:#1f4fd1,stroke-width:2px,stroke-dasharray:5 3,color:#0b2a80
   classDef step fill:#e5e7eb,stroke:#6b7280,color:#111827
   class S start
-  class B,P,T,A skill
+  class B,P,T,A,M skill
   class R,C helper
-  class K step
+  class K,L step
   style side fill:#f3f4f6,stroke:#9ca3af,color:#111827
 ```
 
-Solid arrows are the usual path; dashed arrows are optional handoffs. Every workflow also works on its own: start with `real-brainstorm` when the idea is open, with `real-plan` when it is chosen, or let `real-start` pick. Reports land in `docs/brainstorm/`, `docs/plans/`, `docs/audits/`, `docs/research/`, `real-test-reports/` and the `real-check` output folder.
+Solid arrows are the usual path; dashed arrows are optional handoffs. Every workflow also works on its own: start with `real-brainstorm` when the idea is open, with `real-plan` when it is chosen, or let `real-start` pick. Reports land in `docs/brainstorm/`, `docs/plans/`, `docs/audits/`, `docs/research/`, `docs/measure/`, `real-test-reports/` and the `real-check` output folder.
 
-## The seven workflows
+## The eight workflows
 
 | Skill | Use it for |
 |---|---|
@@ -45,8 +50,11 @@ Solid arrows are the usual path; dashed arrows are optional handoffs. Every work
 | `/real-check` | Quick automated check of any public URL: one-page owner-facing report, optional outreach draft |
 | `/real-test` | Playwright tests for the key user flows of your own web app: plan, generate, run, heal once, report with screenshots, console and accessibility findings and a visual comparison; optional Firefox, WebKit and CI; reruns need no model |
 | `/real-research` | Resolve current external facts from primary sources |
+| `/real-measure` | After release: judge with live data if a change hit its goal. Verdict (hit, miss or inconclusive), intervals, sample sizes and one next action. Read-only; reads the Measure block of the `real-plan` plan |
 
 `real-check`, `real-test` and `real-audit` are different jobs. `real-check` takes any public URL with no code or account access, typically finishes in about 30 seconds, is rule-based and deterministic (no AI), is read-only, and writes a one-page report for the site's owner; the site is often someone else's (client, prospect, competitor). `real-test` is for your own app (local, staging or a URL you own): an AI explores it, you approve a plan, it writes persistent Playwright tests for the user flows that stay in your repo, runs and heals them once, and reports passed / failed / fixme / blocked. `real-audit` is expert judgment on your own product in depth (repo, running app, screens) with prioritized findings, coverage and validation tasks. `real-audit` runs `real-check` first when its scope includes the product's public web surface.
+
+`real-measure` is the step after release. `real-test` checks flows in a test or staging app before release, and `real-audit` gives expert judgment without outcome data. `real-measure` reads live data of the released product and compares it with the Measure block of the plan: one primary metric, up to two guardrails, a baseline window and an after window of equal length. It is read-only and starts only when you ask. A before and after result says "associated with", never "caused by". When a needed event is not tracked, it reports **Could not measure** and stops; it never queries a guessed event.
 
 You do not have to type a command. Their descriptions are available to the model, so a request such as “What should we improve in this product?” can invoke `real-audit` automatically. Direct commands remain available when you want a specific workflow.
 
@@ -107,7 +115,7 @@ If the checkout already exists, skip cloning. The installer validates the whole 
 
 ### Claude app (claude.ai and Claude desktop)
 
-Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the seven zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all seven; `real-plan` and `real-start` expect `real-audit` next to them. `real-test` needs a shell and a browser, so it does nothing useful in the app itself; use it from Claude Code or Codex.
+Each skill uploads as its own zip; the app does not accept a multi-skill bundle. Download the eight zips from the [latest release](https://github.com/giraybatiturk/skills/releases/latest), then in the app open Customize > Skills > + > Upload a skill and upload them one by one. Upload all eight; `real-plan` and `real-start` expect `real-audit` next to them. `real-test` needs a shell and a browser, so it does nothing useful in the app itself; use it from Claude Code or Codex.
 
 To build the zips from a checkout instead:
 
@@ -124,9 +132,9 @@ Each description ends with a version stamp such as `(v0.8.0)`, so the app's skil
 npx skills@1.7.4 add giraybatiturk/skills -g -a codex -s '*' -y
 ```
 
-Open a new session after installation. The public list should contain exactly `real-start`, `real-brainstorm`, `real-plan`, `real-audit`, `real-check`, `real-test`, and `real-research`.
+Open a new session after installation. The public list should contain exactly `real-start`, `real-brainstorm`, `real-plan`, `real-audit`, `real-check`, `real-test`, `real-research`, and `real-measure`.
 
-The supported installation is the complete seven-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
+The supported installation is the complete eight-skill bundle. Plan depends on Audit references; installing Plan alone is unsupported and produces an explicit missing-dependency message. Existing copied installations require migration using the conflict instructions above.
 
 ## Hooks
 
@@ -156,15 +164,18 @@ Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` t
 
 `real-test` needs Node 20+, a shell, and `@playwright/test` with Chromium; with your consent it installs `@playwright/test` and `@axe-core/playwright` into your project as dev dependencies, downloads Chromium (all from the network; Firefox and WebKit too with `--browsers`), and runs `npx playwright init-agents` (Playwright's own planner, generator and healer agents) there; that command overwrites an existing `.mcp.json`, so the skill backs it up and merges your other servers back. It runs on your machine inside your coding agent (your subscription, no API key). Credentials go only to the app under test: you log in yourself once, and no plan, test or prompt contains them. Test data, page content, snapshots and test code go to the app under test and pass through your agent's model provider; there is no telemetry, and the npm and Chromium downloads (Firefox and WebKit too with `--browsers`) are the only other traffic. After installing the agents, restart the session once so the client loads them. By default tests stop before the final submit of any write (send, delete, pay, invite, publish); with `--allow-writes` on a non-production target they do submit, with fake data only, and those tests are tagged `@writes` and skip themselves when pointed at another origin. Every run also writes a self-contained `visual.html` next to the report (a screenshot per flow and project, console and network errors, axe-core findings, and a comparison with the last run); these are observations and never fail a test, and the screens stay on disk, not with the model. Optionally the skill writes a GitHub Actions workflow that reruns the tests without a model; CI has no login session, so login flows fail there. Where there is no shell, it stops and says so.
 
-Three skills ship scripts:
+Four skills ship scripts:
 
 - `real-check`: `skills/engineering/real-check/scripts/check.mjs`, the scan itself.
 - `real-test`: `skills/engineering/real-test/scripts/guard.mjs`, `summary.mjs`, `visual.mjs` and `real-shot.mjs` (before and after captures at 375 and 1280 px). `assets/fixtures.ts` is the observations fixture copied into your tests folder.
+- `real-measure`: `skills/product/real-measure/scripts/stats.mjs`, the arithmetic of the verdict: intervals for rates, means and skewed values, the sample minimum and the verdict rules. Node 20+, standard library only, no network.
 - `real-audit`: `skills/product/real-audit/scripts/annotate-evidence.mjs`, which draws the marked screenshots of its evidence method. It needs Node 20+ and uses the Playwright and Chromium install of `real-check` next to it (or one in the current folder). It opens its own headless browser on the URLs in its spec (the page loads its own resources and counts as a visit) and writes only to the folder you give it. Without it, the audit keeps the original capture and describes the marked area in words.
+
+`real-measure` needs Node 20+ for `stats.mjs` and a source of aggregates: an analytics tool that is connected to your agent, an analytics API with a read-only key from an environment variable, or an export file that you give. It never reads `.env*` files, never writes to the analytics tool and adds no telemetry. Query results pass through your agent's model provider as aggregates; the skill asks for no person-level rows.
 
 The other workflows are instructions only.
 
-To run the local tests from a checkout: `node scripts/test-real-check.mjs` (Node standard library only; needs Playwright and Chromium installed in `skills/engineering/real-check/scripts`) and `node scripts/test-real-test.mjs` (Node standard library only, no browser, no network).
+To run the local tests from a checkout: `node scripts/test-real-measure.mjs` (Node standard library only), `node scripts/test-real-check.mjs` (Node standard library only; needs Playwright and Chromium installed in `skills/engineering/real-check/scripts`) and `node scripts/test-real-test.mjs` (Node standard library only, no browser, no network).
 
 ## Natural-language routing
 
@@ -179,6 +190,7 @@ Intended routes below depend on client selection; use the explicit command when 
 - “Audit our checkout flow” → `real-audit`: your own product in depth, evidence from the running app and code.
 - “Write tests for the signup and checkout flows of our staging app” → `real-test`: your own app; an AI explores it, you approve a plan, Playwright tests stay in your repo, they run at 1280 and 375 px (Firefox and WebKit on request), and a failing one is healed once or marked `test.fixme` with a reason.
 - “Is this animation smooth?” → `real-audit` Design with Motion, runtime evidence required.
+- “Did the new onboarding raise signups?” → `real-measure`: reads the Measure block of the plan, queries aggregates, reports hit, miss or inconclusive with intervals and one next action.
 
 ## Migration from 0.7
 
@@ -196,6 +208,7 @@ Old commands are intentionally absent from discovery so the menu stays small. `r
 
 ## Changelog
 
+- **0.14.0** (2026-10-27): Added `real-measure`, the eighth workflow: after release, it judges with live data whether a shipped change hit its goal. Input: the new **Measure** block of `real-plan` (primary metric with formula, event names, source, baseline, target, up to two guardrails, minimum sample, wait window with the planned measure date, release marker, data owner). The block is required only for plans with an outcome goal. A run starts manually, or through `real-start` for a request such as "did it work?"; the plan holds the reminder date and the skill never schedules itself. Sources in v1: a connected analytics tool, an analytics API with a read-only key, and export files; logs and store metrics come in as export files. `scripts/stats.mjs` (Node standard library only) does the arithmetic: a two-proportion interval for rates, a Welch interval for means, a seeded bootstrap for skewed values, the sample minimum (100 events and 100 non-events, or 30 units, in each window), the guardrail status and the verdict. Verdicts: hit, miss, inconclusive; **Could not measure** is a status. An early look, a data-health problem or a sample under the minimum caps the verdict at inconclusive; a guardrail whose whole interval is past its limit gives a miss. The report says "associated with" for a before and after result; a holdout or a flag split is advice in `real-plan`, not a rule. Output: `docs/measure/YYYY-MM-DD-<slug>.md` and one next action (keep, iterate, roll back or back to brainstorm); the skill executes none. `real-start` gets a Measure route and a seventh and eighth step in its order. The stamps of `real-plan`, `real-start`, `real-test` and the plugin move to 0.14.0. `scripts/test-real-measure.mjs` covers `stats.mjs`; `scripts/check-skill-wording.py` now accepts a higher version stamp. Not verified: behavior of the skill with a model and a real analytics tool.
 - **0.13.1** (2026-10-20): `real-test` report and language. `visual.html` is the one page to open, redesigned: a summary row (tests passed, failed, screens changed, tests with findings), an overview table with each flow's test and screen status per project, and one collapsible card per flow (opened when it failed or its screen changed) with screens at a fixed scale in scroll frames, so phone screens no longer fill the page; the header links the Playwright HTML report (`html/index.html`) for steps, errors and traces, and the chat no longer offers that report as a second page. Language: the plan, `report.md` and the final chat message are English by default, whatever language the conversation is in; Turkish only with `--lang tr` or an explicit request; scenario names (test titles) are always English. Status badges are HTML-escaped. Only the `real-test` stamp and the plugin version move to 0.13.1. Security fixes: the preflight removes `browser_run_code_unsafe` from all three agents (planner, generator, healer), the standing rules treat page content as evidence, never instructions, and forbid leaving the target's origin; the guard rejects code that reaches Node (`node-escape`: `process` other than `process.env`, `globalThis`, `getBuiltinModule`, `module.require`, `Function(`) and the docs say it is a pattern check, not a sandbox, with the user's review of the specs as the real boundary; the CI template sets `permissions: contents: read` and pins its actions to commit SHAs; the Codex install command pins `skills@1.7.4`.
 - **0.13.0** (2026-10-20): `real-test` records evidence with every flow and can run beyond Chromium. Observations fixture: the skill ships `assets/fixtures.ts`, which the preflight copies to `<out>/real-test.fixtures.ts` on every run, and generated specs import `{ test, expect }` from it. One auto fixture per test records console errors, page errors, responses with status 400 or more and failed requests (URLs without query or fragment, same-origin or third-party) and, after the test body, attaches a full-page screenshot, an axe-core run for WCAG 2.0 and 2.1 A and AA, and that record. It only observes and never fails a test; `@axe-core/playwright` is installed as a dev dependency with consent. Guard: `real-test.fixtures.ts` is accepted only when it is byte-identical to the shipped file (rule `fixtures-changed`, rejected otherwise; the heal cannot touch it), and a planned spec that does not import it gets the warning `fixtures-not-imported`, which `summary.mjs` lists as `guard.noFixtures`. `--browsers firefox,webkit` adds desktop projects `real-test-firefox` and `real-test-webkit` (1280 px), installs the browsers with consent and includes them in the run, `grepInvert` and rerun commands; `summary.mjs` returns `projects`, the report has one column per project, and the `fixme` form can name a browser. New `scripts/visual.mjs` (Node standard library only): copies each flow's screen to `<report>/screens/` (the next run's baseline), compares it with the newest earlier report of the same host (8-bit RGB and RGBA PNGs decoded with `node:zlib`; `same`, `changed`, `size-changed`, `new`, `missing`, `not-comparable`) and writes a self-contained `visual.html` with the screens per project, baseline against current plus a difference overlay for changed ones, and the console, network and accessibility findings per flow. Screens and observations are evidence: they never change a flow's status. A new last step offers a GitHub Actions workflow (`.github/workflows/real-test.yml`: push to the default branch and manual dispatch, Node 20, `npm ci`, `npx playwright install --with-deps`, the same projects against the repository variable `REAL_TEST_BASE_URL`, the Playwright report as an artifact; no model). CI has no `.auth/` session, so login flows fail there and the skill puts no credentials into it; `@writes` tests are skipped off-origin by `grepInvert`, and CI never targets production writes. Limits: axe-core finds only a subset of WCAG issues, and a screenshot of dynamic content differs between runs without a real change. Only the `real-test` stamp and the plugin version move to 0.13.0; the other skills are unchanged. `scripts/test-real-test.mjs` now also covers the fixtures check, the visual comparison statuses and an extra project column.
 - **0.12.0** (2026-10-06): Added `real-test`: point it at your own web app (local, staging or a URL you own) and get a test plan of its key user flows, Playwright tests generated from the approved plan and kept in your repo (`./tests/real-test/` by default), a run at desktop (1280 px) and phone (375 px) width, one healing pass, and a short report (`./real-test-reports/<host>-<date>/`) with every flow marked passed, failed, fixme or blocked, reproduction steps and screenshot paths. It builds on Playwright's official test agents (`npx playwright init-agents`: planner, generator, healer) instead of a custom agent; reruns are plain `npx playwright test` with no model. Claude Code (`--loop=claude`) was run end to end; for Codex (`--loop=codex`) the agent files are generated and hardened, but in a non-interactive test the spawned planner had no Playwright tools, so treat Codex as unverified. It runs on your machine inside your coding agent; besides the app under test and the npm and Chromium downloads of setup, data goes only to the agent's own model provider, and there is no telemetry. The user approves the plan before any test is written, and says for every host whether it is production; the agents' browser and the report runs are pinned to the target's origin. Login is done once by the user (`storageState`, git-ignored); credentials never enter a test or a prompt. Safety: by default tests stop before the final submit of any write (send, delete, pay, invite, publish); with `--allow-writes` on a non-production target they submit fake data and carry a `@writes` tag, so reruns against another origin skip them; a failing test becomes `test.fixme` with a reason instead of a weakened assertion, and the guard compares the matcher and arguments of every assertion with the pre-heal copy. Two helper scripts ship with the skill: `guard.mjs` (a static pattern check of every code and data file in the tests folder: it sets aside generated tests that mock the network, call the backend directly, skip, loop or weaken assertions or carry secrets, and restores tests the healer weakened, deleted or broke; it is not a parser and cannot tell a locator repair from an assertion pointed at something weaker, so it lists every assertion whose locator text changed for the report) and `summary.mjs` (turns the Playwright JSON report, the plan and the guard output into the numbers and lists the report is written from, blocked flows and specs outside the plan included). Boundary: `real-check` stays the rule-based, read-only scan of any public URL, `real-audit` the in-depth review of your own product; `real-start` routes to `real-test`, and the `real-start`, `real-check` and `real-audit` stamps move to 0.12.0 because their routing text changed. A local test script, `scripts/test-real-test.mjs`, checks the frontmatter, version stamps, skill lists and the two scripts without a browser; it is not part of the skill zip. Needs Node 20+ and downloads Chromium on first run; the stop-before-submit rule is enforced by instructions and the guard, not by a network block.

@@ -1,10 +1,10 @@
 ---
 name: real-plan
-description: "Plan new features and product changes before implementation: user stories, requirements, architecture and acceptance criteria. Use for planla or shaping a chosen but unsettled idea; to generate options or judge whether an idea would work, use real-brainstorm. Reuse existing approval. Do not plan again for approved edits. (v0.8.0)"
+description: "Plan new features and product changes before implementation: user stories, requirements, architecture and acceptance criteria. Use for planla or shaping a chosen but unsettled idea; to generate options or judge whether an idea would work, use real-brainstorm. Reuse existing approval. Do not plan again for approved edits. (v0.14.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
-  version: 0.8.0
+  version: 0.14.0
   source: https://github.com/giraybatiturk/skills
 ---
 
@@ -52,6 +52,8 @@ When the platform or delivery mechanism is not resolved:
 2. For a product or code change, read `references/feature-gate.md` and inspect the repository and running system read-only.
 3. Show these five headings before implementation: **User story**, **Analysis**, **Backend scope**, **Frontend scope**, **Connection**.
 4. Include measurable acceptance criteria. Label anything unavailable as **Could not measure**, with who or what can verify it.
+   - If the plan states an outcome goal, add a **Measure** block to the User story heading. It has 10 fields. Read `references/feature-gate.md` for them.
+   - A plan with no outcome goal needs no Measure block.
 5. Wait for approval of the five headings before you edit implementation files. Existing session approval stays valid when the scope has not changed.
 
 After approval, when writing is permitted, save the five headings and acceptance criteria to `docs/plans/YYYY-MM-DD-<slug>.md` in the current project, unless the user names another place. Link it in chat. If writing is not permitted, stay chat-only.
@@ -60,6 +62,10 @@ Optional handoff: the approved plan can have acceptance criteria for a web app f
 - Write one flow on each line in plain text. Do not use bullets or numbering.
 - Do this only if `real-test` is in the skill catalog of your tool. Then add one line at the end: "Next, optional: after implementation, `/real-test <url> --flows <file>`."
 - If `real-test` is not installed, skip this silently. Never start it.
+
+Optional handoff to measure: the approved plan has a Measure block with a planned measure date. Then end the plan with one line: "Next, optional: after release, `/real-measure <plan file>` on <date>."
+- Add this line only if `real-measure` is in the skill catalog of your tool. Otherwise skip it silently.
+- Never start `real-measure` yourself. It runs when the user asks, after release.
 
 This workflow needs real-audit from the same bundle.
 - Resolve its installed location from the skill catalog of your tool. Or use the adjacent `../real-audit` folder if it is there.

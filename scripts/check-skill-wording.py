@@ -8,7 +8,7 @@ carries behaviour in the base file, then confirm that the item exists after the 
 Items: heading lines, inline code spans, short **bold** labels (6 words or fewer, starting with a capital), numbers, file names, --flags,
 fenced code blocks (exact), table row count, and the manual keywords in
 scripts/skill-wording-manifest.tsv (file<TAB>keyword; the keyword must exist in both).
-Frontmatter: `name` and `version` must be identical. The description must keep the
+Frontmatter: `name` must be identical. `version` must be identical or higher (a release can raise a stamp). The description must keep the
 trigger words in the manifest rows marked DESC.
 
 Usage: python3 scripts/check-skill-wording.py [BASE_REF]
@@ -26,6 +26,9 @@ def git_show(path):
 def split(text):
     m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
     return (m.group(1), text[m.end():]) if m else ("", text)
+
+def version_tuple(text):
+    return tuple(int(n) for n in re.findall(r"\d+", text)[:3])
 
 def fences(body):
     return re.findall(r"```[^\n]*\n.*?```", body, re.S)
@@ -81,7 +84,10 @@ for p in files:
             for txt, fm in ((old, ofm),):
                 ov = re.search(rf"^\s*{key}:\s*(.*)$", ofm, re.M); nv = re.search(rf"^\s*{key}:\s*(.*)$", nfm, re.M)
                 count(skill)
-                if not ov or not nv or ov.group(1) != nv.group(1): miss(skill, f"{rel}: frontmatter {key} changed")
+                if not ov or not nv: miss(skill, f"{rel}: frontmatter {key} missing")
+                elif key == "version":
+                    if version_tuple(nv.group(1)) < version_tuple(ov.group(1)): miss(skill, f"{rel}: frontmatter version went down")
+                elif ov.group(1) != nv.group(1): miss(skill, f"{rel}: frontmatter {key} changed")
     oi, ni = items(obody), items(nbody)
     for kind, vals in oi.items():
         for v in sorted(vals):

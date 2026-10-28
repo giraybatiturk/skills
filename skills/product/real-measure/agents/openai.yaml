@@ -1,0 +1,6 @@
+interface:
+  display_name: "Measure"
+  short_description: "Judge a shipped change with live data: hit, miss or inconclusive, with intervals and one next action"
+  default_prompt: "Use $real-measure to judge with live data whether this shipped change hit its goal."
+policy:
+  allow_implicit_invocation: true

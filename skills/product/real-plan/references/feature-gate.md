@@ -13,6 +13,7 @@ Inspect the repo and the running system read-only to find what exists.
 Use the existing conversation and repo evidence first.
 - Ask only the unresolved questions that change the scope materially.
 - These questions are: who it is for, which problem, what success looks like, and what is out of scope.
+- The answer to "what success looks like" ends with at least a primary metric. Or it ends with **Could not measure** and a named verifier.
 - Do not make the user repeat facts that you already established.
 - If a prerequisite changes the solution, ask 1–3 independent questions. Defer the dependent sections until the user answers.
 - The five headings are required before implementation. They are not required before this clarification.
@@ -46,6 +47,28 @@ Do not write only the happy path. Assess these eight classes. Write scenarios fo
 6. **Third party**: what if the provider changes its format; how long does the token live; does our code match what the provider's own wizard generates
 7. **Contract consistency**: same concept, same format and name everywhere; nullable consistent
 8. **Environment and deployment**: anything that breaks for every customer on release; who provisions secrets
+
+#### Measure block
+
+Add it only when the plan states an outcome goal, for example "raise signup conversion". Put it at the end of the User story heading. The five headings stay the same.
+
+Fields:
+1. Primary metric and its formula: numerator and denominator.
+2. Event and property names.
+3. Data source.
+4. Baseline: a value, or "read it on the measure date", with its window.
+5. Target, labelled "requirement" or "proposal".
+6. Guardrails with their limits. Use at most two.
+7. Minimum sample, or "default".
+8. Wait window and the planned measure date.
+9. Release marker: date and time, version or flag.
+10. Data owner.
+
+Rules:
+- Use the metric-tree rule of `real-audit` Product mode. Put each metric in one class: measurable now, requires instrumentation, requires qualitative research, or unsuitable.
+- Put each missing event in Backend scope with its name, properties, trigger and owner.
+- Advice line: if the release uses a flag, plan a holdout or a flag-based split. Then `real-measure` can compare both groups in the same period. This is not required.
+- `real-measure` reads this block after release. A before and after result says "associated with".
 
 ### 3. Backend scope
 
