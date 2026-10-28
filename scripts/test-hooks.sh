@@ -79,10 +79,10 @@ wf() { mkdir -p "$(dirname "$R/$1")"; printf '%s\n' "$2" > "$R/$1"; }
 
 # ---------- static checks ----------
 section "static checks"
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
   if sh -n "$f" 2>/dev/null; then ok; else bad "syntax: $f"; fi
 done
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
   if [ -x "$f" ]; then ok; else bad "not executable: $f"; fi
 done
 for f in "$CL/settings.example.json" "$H/codex/hooks.example.json"; do

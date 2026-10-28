@@ -25,6 +25,7 @@ Agent hooks run in Claude Code. Most of them run in Codex too.
 | `hooks/claude/pre-tool-use.sh` | PreToolUse, Bash | `git commit` and `git push` in one command, a commit on `main`, `--no-verify`, a `core.hooksPath` override, a bypass variable set inside the command |
 | `hooks/claude/dangerous-command.sh` | PreToolUse, Bash | Denies `rm -rf` on broad targets, a force push to `main` and `curl \| sh`. Asks for `git reset --hard`, `git clean -fd`, other force pushes, other risky `rm -rf` and `DROP TABLE` |
 | `hooks/claude/real-open-guard.sh` | PreToolUse, Bash | A direct `open`, `xdg-open`, `python -m webbrowser` or a browser start that is not headless. It allows `real-show.sh` |
+| `hooks/claude/real-approvals-hook.sh` | PreToolUse, every tool (`*`) | What the approvals table says. A `deny` rule blocks. An `ask` rule asks with the reason. An unlisted MCP tool with a write verb asks. A write by the agent to the table or the grants folder is blocked |
 | `hooks/claude/protect-secrets.sh` | PreToolUse, file tools and Bash | Read, edit and write access to `.env*`, `*.pem`, `id_rsa` and `credentials`. It allows `.env.example` |
 | `hooks/claude/protect-tests.sh` | PreToolUse, Edit and Write | An edit of a test file that removes tests, adds `.skip`, `.only` or `xit`, or adds a trivial assertion |
 | `hooks/claude/post-format.sh` | PostToolUse, Edit and Write | Nothing. It formats the edited file and runs a syntax check. A failed check gives the agent the error |
@@ -134,6 +135,92 @@ A bypass is for one command. The user sets it. The agent hooks block an agent th
 Set the variable in the shell that starts the agent, or in front of one git command: `REAL_ALLOW_MAIN=1 git commit ...`.
 
 The notifier reads two more variables. `REAL_NOTIFY_WEBHOOK` holds a webhook URL, and `REAL_NOTIFY_WEBHOOK_FIELD` names the JSON field for the text. Set them in your environment. Never write a URL or a token in a file of a repo.
+
+## Approvals table
+
+The approvals table is one flat YAML file. It lists which tool calls and commands run alone, which ask you, and which are denied. Each rule has a reason.
+
+```yaml
+- id: tracker-write
+  tool: mcp__tracker__*create*|mcp__tracker__*update*
+  mode: ask
+  why: Show the text first and wait for approval.
+- id: merge
+  command: gh pr merge|glab mr merge
+  mode: deny
+  why: Only the owner merges.
+```
+
+Each rule starts with `- id:` at column 1. The next lines start with two spaces. A rule has `id`, `mode` and `why`. It has one of `tool` or `command`.
+
+- `id`: lower case letters, digits and `-`, at most 64 characters. The id is unique in one file.
+- `tool`: tool names. A `*` matches any text and a `?` matches one character. The match is case sensitive. Split alternatives with `|`.
+- `command`: command words with the same wildcards. It applies to the `Bash` tool only. Split alternatives with `|`.
+- `mode`: `auto`, `ask` or `deny`.
+- `why`: one line of text. The agent and you see it.
+
+A value has at most 500 characters. A rule has at most 20 alternatives. A table has at most 500 rules and 128 KiB. The parser ignores blank lines and lines that start with `#`. `hooks/examples/approvals.example.yml` shows the format.
+
+### Lookup and conflicts
+
+- `REAL_APPROVALS` names one table. Then only that table applies.
+- Without it, `.real/approvals.yml` in the repo and `~/.config/real/approvals.yml` both apply. A repo table cannot remove a `deny` rule of your own table.
+- With no table, the hook does nothing.
+- When two rules match, the stricter mode wins: `deny`, then `ask`, then `auto`. `real-approvals.sh check` prints each conflict.
+
+### Modes
+
+- `deny`: the hook exits with code 2. The agent sees `ID: WHY`.
+- `ask`: the client asks you and shows `ID: WHY`. With `REAL_ASK_MODE=deny` the hook denies instead and prints a grant hint.
+- `auto`: the hook prints nothing. The hook never prints `allow`, so the table never skips a prompt of the client.
+
+### Defaults and errors
+
+- An unlisted MCP tool with a write verb in its name asks. The id is `default-write`. A word of the tool name must equal the verb.
+- The verbs are `create update delete send post publish move merge remove add set edit write comment submit share upload archive deploy`.
+- The name `mcp__x__get_settings` has no write verb, because `settings` is not `set`. The name `mcp__x__createIssue` has the verb `create`.
+- A table with an error makes every MCP tool with a write verb ask. The id is `broken-table`. This holds also when a rule of another table says `auto`.
+- The hook also shows a warning with the file, the line and the error. The rules of a valid table still apply. The rules of the broken table do not apply.
+- A file over 128 KiB, or with a control byte, counts as a table with an error.
+
+### Grants
+
+- A grant lets one `ask` rule pass for a short time. The file `${XDG_STATE_HOME:-$HOME/.local/state}/real/approvals/RULE_ID` holds `expires=EPOCH`.
+- Only you run `real-approvals.sh grant RULE_ID --minutes N`, in a terminal. The command refuses to run without a terminal. A `deny` rule cannot be granted.
+- The hook denies a write by the agent to the table or to the grants folder. It also denies `grant` in an agent command. The agent can still run `check`, `explain`, `revoke` and `export-omp`.
+- A grant never lifts a `deny` rule or `broken-table`. An expired or malformed grant file is ignored.
+
+### Commands
+
+```sh
+scripts/real-approvals.sh check
+scripts/real-approvals.sh explain mcp__tracker__create_task
+scripts/real-approvals.sh explain gh pr merge 5
+scripts/real-approvals.sh grant tracker-write --minutes 10
+scripts/real-approvals.sh revoke tracker-write
+scripts/real-approvals.sh export-omp --tools names.txt
+```
+
+- `check` prints the tables, the rules, the conflicts and the grants. It exits with 1 when a table has an error.
+- `explain` prints one line: `MODE ID: WHY`. One word such as `mcp__x__y` or `Write` is a tool name. Other text is a Bash command.
+- `grant` and `revoke` change the grant file of one rule. `grant` takes 1 to 1440 minutes. The default is 10.
+- `export-omp` prints a `tools.approval` block for omp. It writes no file.
+
+### Command matching
+
+The hook splits a command into words outside quotes. A segment ends at `;`, `&&`, `||`, `|`, `&`, a new line, `(` or `)`. The hook also scans the text of `$( )`, backticks, `sh -c` strings and `eval`.
+
+Each word position starts a match. The pattern must match that word, then the words after it. A prefix of the words is enough. So `sudo gh pr merge`, `bash -c 'gh pr merge 1'` and `xargs -n1 gh pr merge` match `gh pr merge`. The text `git commit -m 'gh pr merge'` does not match. The hook uses the base name of the first word, so write `gh` and not `/usr/bin/gh`.
+
+### Codex and omp
+
+- Codex does not support `ask`. The Codex example runs the hook with `REAL_ASK_MODE=deny`. An `ask` rule then denies, and the message names the grant command. Run `grant` in your terminal to let the rule pass.
+- omp has `tools.approval`. It maps exact tool names to `allow`, `deny` or `prompt`, and it has no globs. `export-omp` prints the block for the tool names that it knows.
+- Give `--tools FILE` with one tool name for each line, written as `mcp__SERVER__TOOL`. The command expands the globs against that list. It also lists the unlisted write tools as `prompt`.
+- omp writes the name as `mcp__SERVER_TOOL`, with one underscore. The command converts the names. Merge the block into the omp config by hand.
+- Rules for Bash commands run through the adapter with `REAL_ASK_MODE=deny`.
+
+Keep your real table private. This repo has only a generic example.
 
 ## Show a result to the user
 
@@ -328,14 +415,14 @@ Sources:
 
 ### Sketch for omp (not tested)
 
-This sketch is not tested. It runs the Bash scripts `dangerous-command.sh` and `real-open-guard.sh` in turn. It blocks on the first exit 2. It shows the idea only.
+This sketch is not tested. It runs the Bash scripts `dangerous-command.sh`, `real-open-guard.sh` and `real-approvals-hook.sh` in turn. It blocks on the first exit 2. It shows the idea only.
 
 ```ts
 // .omp/hooks/pre/real-guards.ts
 import { spawnSync } from "node:child_process";
 import { isToolCallEventType, type ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 
-const SCRIPTS = ["dangerous-command.sh", "real-open-guard.sh"];
+const SCRIPTS = ["dangerous-command.sh", "real-open-guard.sh", "real-approvals-hook.sh"];
 
 export default function realGuard(pi: ExtensionAPI) {
   pi.on("tool_call", (event) => {
@@ -408,6 +495,12 @@ export default function realShip(pi: ExtensionAPI) {
 - The banner needs the permission of the system notifier. When the system blocks it, no banner shows.
 - The memory response format is not checked against a live service. `real-mem.sh` reads two shapes only.
 - Claude Code runs matching hooks in parallel. The text of `session-start.sh`, the contract hook and `real-context.sh` can come in any order.
+- The approvals hook reads the command text. It does not catch a command built at run time, such as `$VAR` or `$(echo gh)`. It does not read a here-document body or the remote string of `ssh`.
+- Options between the words of a pattern break the match. The command `gh pr --repo x merge` does not match `gh pr merge`. Write `gh pr *merge*` instead.
+- The approvals hook scans a nested `-c` string, `eval` text or `$( )` text down to four levels. A pattern with a glob in its first word is slower than the other patterns.
+- A Bash command that is too long or too nested to scan in time gets `ask`. A `deny` that the hook finds first still wins.
+- The guard of the approvals table and the grants folder reads text only. A command or a path that builds the name at run time is not caught.
+- A grant is a file. A process that writes the file by another path is not caught.
 - A user can bypass any hook. CI is the only enforcement.
 
 ## Test
@@ -421,3 +514,4 @@ Run `sh scripts/test-real-context.sh` for the context hook, the handoff file and
 
 Run `sh scripts/test-real-await.sh` for `scripts/real-await.sh`. It uses temporary repos, a temporary HOME and stub tools. It stops only the processes that it started.
 For the UI hooks and `real-shot.mjs`, run `node scripts/test-real-shot.mjs` with Playwright and Chromium installed in `skills/engineering/real-check/scripts`.
+Run `sh scripts/test-real-approvals.sh` to test the approvals hook and `real-approvals.sh` in a temporary HOME.

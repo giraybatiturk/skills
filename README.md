@@ -133,6 +133,8 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - `scripts/real-await.sh` waits for a human step, such as a login, a download or a merge. It checks a file, a URL, a pull request, a command or a process, and exits when the check passes. The finished background job wakes the agent.
 - `/real-status` shows a `waiting:` line while a wait runs. Read [docs/real-await.md](docs/real-await.md) for the probes, the exit codes and the one notification.
 - Two UI hooks track edits of UI files. The Stop hook then asks the agent to run `real-shot` and show a before and after link. They need `ui.url` in `.real-hooks`.
+- The approvals table is one YAML file. It says which tool calls and commands run alone, which ask you, and which are denied. A hook for Claude Code and Codex enforces it.
+- `scripts/real-approvals.sh` checks the table, explains one decision, grants a rule for a short time and prints an omp block. Keep your real table private.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 
