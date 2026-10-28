@@ -1213,6 +1213,12 @@ EOF
   csj() { printf '{"hook_event_name":"Stop","session_id":"%s","cwd":"%s","stop_hook_active":%s}' "$1" "$R" "$2"; }
   mkcontract active
   run "$CS" "$(csj c0 false)"; expect_silent "a clean worktree has nothing to prove"
+  git -C "$R" rev-parse HEAD > "$R/.real/base"
+  run "$CS" "$(csj c0b false)"; expect_silent "base equals HEAD: still nothing to prove"
+  wf src/feature/z.ts 1; git -C "$R" add -A; git -c user.name=t -c user.email=t@t -C "$R" commit -q -m work
+  run "$CS" "$(csj c0c false)"; expect_stop_block "work committed after the base commit still needs proof"
+  rm -f "$R/.real/base"
+  run "$CS" "$(csj c0d false)"; expect_silent "no base file: the old behaviour (clean worktree, nothing to prove)"
   wf src/feature/a.ts 1
   run "$CS" "$(csj c1 false)"; expect_stop_block "an item with no claim blocks the stop"
   has "the reason names the item" "$OUT" "the unit tests pass"

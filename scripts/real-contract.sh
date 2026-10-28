@@ -85,6 +85,8 @@ TEMPLATE
     [ -n "$(rc_section "$f" SCOPE)" ] || die "SCOPE is empty. Write at least one path or glob as a bullet."
     [ -n "$(rc_section "$f" "DONE WHEN")" ] || die "DONE WHEN is empty. Write at least one measurable item as a bullet."
     set_status active
+    # Remember where the work starts. The stop check also counts commits made after this point (an agent that commits has a clean worktree).
+    git -C "$root" rev-parse HEAD > "$(rc_dir "$root")/base" 2>/dev/null || true
     printf 'Approved. Status: active. The guard now enforces SCOPE and DO NOT TOUCH.\n'
     ;;
   add-scope)

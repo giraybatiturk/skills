@@ -35,8 +35,12 @@ else
 fi
 
 # Nothing changed outside .real/ and docs/contracts/: nothing to prove.
+# A commit counts as a change: "real-contract.sh approve" saves the start commit in .real/base. An agent that commits has a clean worktree.
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  [ -z "$(git status --porcelain -uall 2>/dev/null | sed 's/^...//' | grep -v -e '^\.real/' -e '^docs/contracts/')" ] && exit 0
+  if [ -z "$(git status --porcelain -uall 2>/dev/null | sed 's/^...//' | grep -v -e '^\.real/' -e '^docs/contracts/')" ]; then
+    base=$(cat "$root/.real/base" 2>/dev/null || true)
+    [ -n "$base" ] && [ "$base" != "$(git rev-parse HEAD 2>/dev/null)" ] || exit 0
+  fi
 fi
 
 problems=$(rc_problems "$root")
