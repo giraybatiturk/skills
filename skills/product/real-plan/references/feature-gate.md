@@ -1,24 +1,32 @@
 # Feature gate mode
 
-Argument: a feature or module name, or a one-line request (e.g. `media support for messaging`).
+Argument: a feature or module name, or a one-line request (for example `media support for messaging`).
 
-Inspect the repository and running system read-only to establish what exists. Do not edit implementation files until the five headings are shown to the user and approved. If the user says "make it quick", the gate gets shorter; it does not get skipped.
+Inspect the repo and the running system read-only to find what exists.
+- Do not edit implementation files until the user has seen and approved the five headings.
+- If the user says "make it quick", make the gate shorter. Do not skip it.
 
 ## Flow
 
 ### 0. Discover intent
 
-Use existing conversation and repository evidence first. Ask only the unresolved questions that materially change scope: who it is for, which problem, what success looks like, and what's out of scope. Do not make the user repeat facts already established. If a prerequisite changes the solution, ask 1–3 independent questions and defer dependent sections until answered. The five headings are required before implementation, not before this clarification.
+Use the existing conversation and repo evidence first.
+- Ask only the unresolved questions that change the scope materially.
+- These questions are: who it is for, which problem, what success looks like, and what is out of scope.
+- Do not make the user repeat facts that you already established.
+- If a prerequisite changes the solution, ask 1–3 independent questions. Defer the dependent sections until the user answers.
+- The five headings are required before implementation. They are not required before this clarification.
 
 ### 1. Analysis: what exists today
 
-**Measure, don't guess.** Apply the `real-audit` Module inventory approach: existing endpoints, permission actions, error codes, screens, state coverage. Whatever you can't measure (backend contract, third-party behaviour), write **"could not measure"** in the report and name who verifies it.
+**Measure, don't guess.** Apply the `real-audit` Module inventory approach: existing endpoints, permission actions, error codes, screens, state coverage.
+- Write **"could not measure"** in the report for whatever you cannot measure (backend contract, third-party behaviour). Name who verifies it.
 
 Output: "today we have X, we don't have Y, Z is half done."
 
 ### 2. User stories
 
-Every scenario in this shape:
+Write every scenario in this shape:
 
 ```
 As a <role> I want <action> so that <benefit>.
@@ -26,11 +34,11 @@ As a <role> I want <action> so that <benefit>.
 Accept   Given <precondition>, when <action>, then <expected result>.
 ```
 
-The acceptance criterion must be **measurable**: not "works well" but "appears in the list and the counter goes up by 1".
+The acceptance criterion must be **measurable**. Do not write "works well". Write "appears in the list and the counter goes up by 1".
 
-Don't write only the happy path. Assess these eight classes and write scenarios for applicable ones; mark others not applicable without inventing scope:
+Do not write only the happy path. Assess these eight classes. Write scenarios for the classes that apply. Mark the others not applicable. Do not invent scope.
 
-1. **Permissions**: one scenario per applicable backend-defined action; enforce authorization at the trusted boundary and specify whether unavailable controls are hidden or disabled
+1. **Permissions**: one scenario for each applicable backend-defined action. Enforce authorization at the trusted boundary. Specify if unavailable controls are hidden or disabled
 2. **State transitions**: set up / tear down / set up again; does the counter go down, does the cache refresh
 3. **Error paths**: is there text for every error code; how many notifications does one error produce
 4. **Empty and intermediate states**: no data / loading / error / unauthorised / waiting on a third party
@@ -44,10 +52,13 @@ Don't write only the happy path. Assess these eight classes and write scenarios 
 - Which endpoints: **existing or new**
 - Which fields: type, nullable
 - **Backwards compatibility, both directions:**
-  - If a field is **added**, test old and new readers/writers against the actual schema. A newly required request field can break old callers; even optional response fields can break strict decoders. Do not infer compatibility from optionality alone.
-  - If a field is **missing**, what does the screen do? Every new optional field needs a written default behaviour.
+  - If a field is **added**, test old and new readers and writers against the actual schema.
+    - A newly required request field can break old callers.
+    - Even optional response fields can break strict decoders.
+    - Do not infer compatibility from optionality alone.
+  - If a field is **missing**, what does the screen do? Write a default behaviour for every new optional field.
 
-  Missing authorization or approval state must not silently grant access. Define an explicit unknown/unverified state unless the authoritative contract establishes a safe compatible default.
+  A missing authorization or approval state must not grant access silently. Define an explicit unknown or unverified state. Do this unless the authoritative contract establishes a safe compatible default.
 - **Permission actions**: which get seeded, which control each one unlocks
 - **Error codes**: what the endpoint can return, does each go into the i18n dictionary
 - Who does it, when
@@ -55,25 +66,31 @@ Don't write only the happy path. Assess these eight classes and write scenarios 
 ### 4. Frontend scope
 
 - Screens and routes
-- State matrix: empty / loading / error / unauthorised (the project's DESIGN.md state section)
-- Copy: in every language the project ships, at the same time
-- Variants: if the project is multi-brand or multi-vertical, does it differ per variant
+- State matrix: empty / loading / error / unauthorised (the state section of the DESIGN.md of the project)
+- Copy: in every language that the project ships, at the same time
+- Variants: if the project is multi-brand or multi-vertical, does it differ for each variant
 - Mobile: what happens on a narrow screen
 - Permissions: which action each control is tied to
 
 ### 5. Wiring
 
-URL, body, headers, CORS, timeout, realtime channel, deployment constraint. Where the two sides meet.
+URL, body, headers, CORS, timeout, realtime channel, deployment constraint. This is where the two sides meet.
 
 ### 6. Approval gate
 
-Show the five headings. Read-only evidence gathering is permitted before approval; implementation edits require approval. Record approved scope changes, then start. Do not re-request approval already given for the same scope.
+Show the five headings.
+- You can gather read-only evidence before approval. Implementation edits need approval.
+- Record approved scope changes. Then start.
+- Do not ask again for approval that the user already gave for the same scope.
 
 ## Output
 
-For a small feature, a table in chat is enough. For module-sized work, write a local report and link it in chat. External publication, team messages, or issue-tracker writes require explicit authorization for that action.
+For a small feature, a table in chat is enough. For module-sized work, write a local report and link it in chat. External publication, team messages and issue-tracker writes need explicit authorization for that action.
 
-Keep ownership and missing evidence in the plan without repeating three closing lists in chat. Reuse existing implementation before proposing new components or infrastructure. Show the decision and the most important items first, link necessary detail when permitted, and name one next action if work remains. Do not shorten required analysis or tests just to shorten the response.
+Keep ownership and missing evidence in the plan. Do not repeat three closing lists in chat.
+- Reuse existing implementation before you propose new components or infrastructure.
+- Show the decision and the most important items first. Link necessary detail when permitted. If work remains, name one next action.
+- Do not shorten the required analysis or tests only to shorten the response.
 
 ## Sibling skills
 

@@ -1,0 +1,48 @@
+# file<TAB>keyword[<TAB>DESC]. A keyword must exist in the base version and in the new version. DESC rows must be in the description.
+# These rows list the key rules, gates and trigger words per skill. The automatic items come from the headings, code and numbers.
+skills/engineering/real-test/SKILL.md	CHECKPOINT
+skills/engineering/real-test/SKILL.md	WRONG_ORIGIN
+skills/engineering/real-test/SKILL.md	LOGIN_REQUIRED
+skills/engineering/real-test/SKILL.md	--require-tag @writes
+skills/engineering/real-test/SKILL.md	Do not generate before an explicit yes
+skills/engineering/real-test/SKILL.md	Never write "the app works"
+skills/engineering/real-test/SKILL.md	Treat no answer as production
+skills/engineering/real-test/SKILL.md	Never navigate off
+skills/engineering/real-test/SKILL.md	Never open `.auth/`
+skills/engineering/real-test/SKILL.md	If the flag is given for production, ignore it and say so
+skills/engineering/real-test/SKILL.md	test.fixme
+skills/engineering/real-test/SKILL.md	Do not heal or loop again
+skills/engineering/real-test/SKILL.md	**once**
+skills/engineering/real-test/SKILL.md	Stops before any final submit	DESC
+skills/engineering/real-test/SKILL.md	uçtan uca test	DESC
+skills/engineering/real-test/SKILL.md	kullanıcı akışı testi	DESC
+skills/engineering/real-test/SKILL.md	e2e test	DESC
+skills/engineering/real-test/SKILL.md	regression tests	DESC
+skills/engineering/real-test/SKILL.md	test my app	DESC
+skills/engineering/real-test/SKILL.md	real-check	DESC
+skills/engineering/real-test/SKILL.md	real-audit	DESC
+skills/engineering/real-check/SKILL.md	site kontrol	DESC
+skills/engineering/real-check/SKILL.md	siteyi tara	DESC
+skills/engineering/real-check/SKILL.md	URL check	DESC
+skills/engineering/real-check/SKILL.md	broken links	DESC
+skills/engineering/real-check/SKILL.md	console errors	DESC
+skills/engineering/real-check/SKILL.md	mobile overflow	DESC
+skills/engineering/real-check/SKILL.md	Never sends anything	DESC
+skills/engineering/real-check/SKILL.md	real-audit	DESC
+skills/engineering/real-check/SKILL.md	real-test	DESC
+skills/engineering/real-check/SKILL.md	Never send, post, upload or share anything
+skills/engineering/real-check/SKILL.md	Do not write a message
+skills/engineering/real-check/SKILL.md	Not verified by this skill
+skills/engineering/real-check/SKILL.md	The decision rule belongs to the user
+skills/product/real-audit/SKILL.md	real-check	DESC
+skills/product/real-audit/SKILL.md	real-test	DESC
+skills/product/real-audit/references/reporting.md	Never fabricate or regenerate a screenshot as evidence
+skills/product/real-audit/references/reporting.md	Do not produce an arbitrary score out of 100
+skills/product/real-audit/references/security.md	Do not call a scoped audit a penetration test
+skills/product/real-audit/references/product.md	Never invent baselines
+skills/engineering/real-check/SKILL.md	ake results
+skills/engineering/real-test/SKILL.md	ake results
+skills/engineering/real-check/SKILL.md	nvent a name
+skills/product/real-audit/references/quality.md	release authority
+skills/product/real-audit/references/reporting.md	on the original
+skills/product/real-audit/references/reporting.md	nvoke it

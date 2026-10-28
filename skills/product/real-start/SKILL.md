@@ -1,6 +1,6 @@
 ---
 name: real-start
-description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit, check, test and research requests. Select the smallest Real workflow; skip routing for simple edits or already-approved implementation. (v0.12.0)"
+description: "Route unclear product work: where to start, nereden başlayalım, or mixed planning, audit, check, test and research requests. Select the smallest Real workflow. Do not route simple edits or approved implementation. (v0.12.0)"
 license: MIT
 metadata:
   author: Giray Batıtürk
@@ -10,37 +10,73 @@ metadata:
 
 # Real start
 
-Choose and invoke the smallest workflow that can finish the request. Do not make the user type another command.
+Choose and start the smallest workflow that can finish the request. Do not make the user type another command.
 
-Carry evidence limits through the recommendation as well as the findings. If analytics or feedback are not supplied, first locate or request existing evidence; do not assume they need to be created from scratch. Proposed next checks are not proven defects or mandatory new features.
+- Carry the evidence limits into the recommendation and into the findings.
+- If analytics or feedback are missing, first find or request the existing evidence. Do not assume that someone must create them from nothing.
+- A proposed next test is not a proven defect. It is not a mandatory new feature.
 
-Keep the router's handoff short. Ask at most 1–3 independent questions that change the next step; defer dependent choices. Lead with the selected route and end with one next action if needed. Reuse a sufficient existing solution and skip speculative stages. If the selected workflow cannot proceed because the product evidence is unavailable, report the selected route, the exact missing evidence and the next useful read-only step. Do not simulate a full downstream audit with speculative features, risk rankings or repeated summaries of missing evidence.
+Keep the handoff of the router short.
+- Ask at most 1–3 independent questions that change the next step. Defer dependent choices.
+- Start with the selected route. If needed, end with one next action.
+- Reuse a sufficient existing solution. Skip speculative stages.
+- Sometimes the selected workflow cannot continue, because the product evidence is not available. Then report three things:
+  - the selected route
+  - the exact missing evidence
+  - the next useful read-only step
+- Do not simulate a full downstream audit. Do not add speculative features, risk rankings or repeated summaries of missing evidence.
 
-Use the client's skill invocation tool or read the selected skill at its catalog-provided path. Do not claim it ran before its instructions load. If unavailable, state the missing capability; do not guess paths. An already-approved implementation goes directly to execution and appropriate verification, without restarting planning.
+Use the skill invocation tool that you have, or read the selected skill at its catalog path.
+- Do not claim that it ran before its instructions load.
+- If it is not available, state the missing capability. Do not guess paths.
+- Send an approved implementation directly to execution and appropriate verification. Do not restart planning.
 
 ## Shared project context
 
-Read the project's existing `PRODUCT.md` before routing and carry its resolved path plus known answers forward. Use the catalog-resolved Real Audit `references/product-context.md` (or verified adjacent `../real-audit/references/product-context.md`) as the shared persistence contract. Let the selected Plan/Audit workflow fill and save confirmed missing facts; the router must not create a second record or interview. Preserve DESIGN.md as read-only unless design-policy work was explicitly requested. Missing PRODUCT.md alone does not block a focused task or already-approved implementation.
+- Read the existing `PRODUCT.md` of the project before you route. Carry its resolved path and the known answers forward.
+- Use the Real Audit `references/product-context.md` that the catalog resolves. Or use the verified adjacent `../real-audit/references/product-context.md`. It is the shared persistence contract.
+- Let the selected Plan or Audit workflow fill and save the missing facts that the user verified. The router must not create a second record or interview.
+- Keep DESIGN.md read-only, unless the user asked for design-policy work.
+- A missing PRODUCT.md alone does not block a focused task or an approved implementation.
 
 ## Product maturity before routing
 
-When receiving an audit request or handoff, carry forward any established product context and scope. Distinguish three cases:
+When you receive an audit request or handoff, carry forward the established product context and scope. Find which of these three cases applies:
 
-- **Confirmed idea only / product not formed:** route to `real-plan` discovery to clarify purpose, users/buyers, intended outcome, candidate user stories and the smallest testable slice. Do not invoke audit merely because the original request used the word audit.
-- **Design or prototype:** if the user wants review of that artifact, route to a bounded `real-audit` Design/Module review of demonstrable behavior. Do not claim live-product, billing or release verification. If the request is instead to define/build the product, use Plan.
-- **Existing product:** route to the selected audit scope and modes. Missing access, documents or screenshots does not prove the product does not exist; request the exact missing evidence or continue independent checks.
+- **Confirmed idea only / product not formed:** route to `real-plan` discovery. Clarify the purpose, users/buyers, intended outcome, candidate user stories and the smallest testable slice. Do not start an audit only because the original request used the word audit.
+- **Design or prototype:** if the user wants a review of that artifact, route to a bounded `real-audit` Design/Module review. Review only the behavior that you can show.
+  - Do not claim live-product, billing or release verification.
+  - If the request is to define or build the product, use Plan.
+- **Existing product:** route to the selected audit scope and modes. Missing access, documents or screenshots do not prove that the product does not exist. Request the exact missing evidence, or continue independent tests.
 
-Do not loop between Start and Audit. An Audit handoff that confirms idea-only goes to Plan, not back to Audit. Load the destination instructions and continue without requiring the user to type another command. If the user explicitly requests critique of an idea only, honor that bounded request and label it conceptual rather than runtime audit.
+Do not loop between Start and Audit.
+- If an Audit handoff shows that the product is an idea only, it goes to Plan. It does not go back to Audit.
+- Load the instructions of the destination and continue. Do not make the user type another command.
+- If the user asks for a critique of an idea only, do that bounded request. Label it conceptual, not a runtime audit.
 
 ## Routing
 
-- **Brainstorm**: no candidate exists yet, or the user wants an idea judged on whether it would work, sell or earn. Invoke `real-brainstorm`.
-- **Plan**: a new feature, change, decision, requirement, or idea that is not approved yet. Invoke `real-plan`.
-- **Audit**: your own product in depth (repo, running app, screens): improve an existing product, inspect what is missing, review a built module or screen, measure performance, or decide the next release. Invoke `real-audit` with the appropriate mode.
-- **Check**: a quick, rule-based scan of a public URL (no AI, read-only), a site someone else owns (client, prospect, competitor), or an owner-facing one-page report or outreach draft. No code or account access needed. Invoke `real-check`.
-- **Test**: persistent end-to-end tests for the key user flows of your own web app (local, staging or a URL you own): an AI explores it, the user approves a plan, Playwright tests stay in the repo, run at desktop and phone width (optionally Firefox and WebKit) and are healed once; the report adds accessibility findings and a visual comparison with the last run; reruns need no model. Neither a public-URL scan (Check) nor an in-depth product review (Audit). Invoke `real-test`.
-- **Research**: the decision depends on current external facts, official documentation, competitor behavior, pricing, policy, or provider limits. Invoke `real-research`.
+- **Brainstorm**: no candidate exists yet, or the user wants an idea judged on whether it would work, sell or earn. Start `real-brainstorm`.
+- **Plan**: a new feature, change, decision, requirement, or idea that is not approved yet. Start `real-plan`.
+- **Audit**: your own product in depth (repo, running app, screens). Use it to improve an existing product, find what is missing, or review a built module or screen. Use it also to measure performance or decide the next release. Start `real-audit` with the appropriate mode.
+- **Check**: a quick, rule-based scan of a public URL (no AI, read-only). Use it for a site that someone else owns (customer, prospect, competitor). Use it also for a one-page report or an outreach draft for the site owner. It needs no code or account access. Start `real-check`.
+- **Test**: persistent end-to-end tests for the key user flows of your own web app (local, staging or a URL that you own).
+  - An AI explores the app. The user approves a plan. The Playwright tests stay in the repo.
+  - The tests run at desktop and phone width (Firefox and WebKit are optional). They are healed once.
+  - The report adds accessibility findings and a visual comparison with the last run.
+  - Reruns need no model.
+  - It is not a public-URL scan (Check). It is not an in-depth product review (Audit).
+  - Start `real-test`.
+- **Research**: the decision depends on current external facts, official documentation, competitor behavior, pricing, policy, or provider limits. Start `real-research`.
 
-If the request spans workflows, use this order: research unresolved external facts, brainstorm when no candidate exists, plan the change, implement only after approval, then audit the result and, when the app runs, test its key flows. Skip stages whose evidence is already settled.
+If the request spans workflows, use this order:
+1. Research unresolved external facts.
+2. Brainstorm, when no candidate exists.
+3. Plan the change.
+4. Implement, only after approval.
+5. Audit the result.
+6. When the app runs, test its key flows.
 
-Legacy mapping: `real-grill` and `real-feature-gate` are now `real-plan`; `real-product-audit`, `real-module-audit`, `real-design-audit`, and `real-perf-audit` are modes of `real-audit`.
+Skip each stage whose evidence is already settled.
+
+Legacy mapping: `real-grill` and `real-feature-gate` are now `real-plan`. `real-product-audit`, `real-module-audit`, `real-design-audit`, and `real-perf-audit` are modes of `real-audit`.
