@@ -1,0 +1,14 @@
+# .real-tests: globs for the test coverage check (hooks/git/real-coverage).
+# One "key = glob" for each line. A key can repeat. A key that you set replaces the default globs of that key.
+# Keys: pages, actions, tests, ignore, enabled.
+# The same keys work in git config: git config --add real.tests.pages 'src/routes/**/+page.svelte'
+# Without this file, the defaults cover Next.js (app router and pages router).
+
+# SvelteKit
+pages = src/routes/**/+page.svelte
+actions = src/routes/**/+server.ts
+actions = src/routes/**/+page.server.ts
+tests = tests/**
+tests = **/*.test.ts
+
+# enabled = false

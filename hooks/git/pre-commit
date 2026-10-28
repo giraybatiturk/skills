@@ -1,0 +1,62 @@
+#!/bin/sh
+# real-hooks-managed
+# Git pre-commit hook of the real skills.
+# 1. Block commits on main, master and the default branch.
+# 2. Block new pages and actions that have no test (see real-coverage).
+# 3. Warn about em dashes and title-case headings in added .md lines. This does not block.
+# Bypass 1: REAL_ALLOW_MAIN=1. Bypass 2: REAL_ALLOW_UNTESTED=1.
+
+here=$(dirname "$0")
+
+branch=$(git symbolic-ref --short -q HEAD 2>/dev/null || true)
+default=$(git symbolic-ref --short -q refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+protected=no
+if [ -n "$branch" ]; then
+  case $branch in
+    main|master) protected=yes ;;
+  esac
+  if [ -n "$default" ] && [ "$branch" = "$default" ]; then protected=yes; fi
+fi
+if [ "$protected" = yes ]; then
+  if [ "${REAL_ALLOW_MAIN:-}" = 1 ]; then
+    echo "real: REAL_ALLOW_MAIN=1 is set. The commit on '$branch' is allowed." >&2
+  else
+    cat >&2 <<MSG
+real: commit blocked. The current branch is '$branch'.
+Do not commit on main, master or the default branch.
+  1. Create a branch:   git switch -c <type>/<short-name>
+  2. Commit there, then open a PR.
+To allow this one commit, run:   REAL_ALLOW_MAIN=1 git commit ...
+MSG
+    exit 1
+  fi
+fi
+
+if [ -x "$here/real-coverage" ]; then
+  "$here/real-coverage" || exit 1
+fi
+
+# Non-blocking style warnings for added Markdown lines.
+dash=$(printf '\342\200\224')
+git diff --cached -U0 --no-color --diff-filter=AM -- '*.md' 2>/dev/null | awk -v dash="$dash" '
+  /^\+\+\+ /   { file = substr($0, 7); next }
+  /^@@/        { split($3, a, ","); ln = substr(a[1], 2) + 0; next }
+  /^\+/        {
+    line = substr($0, 2)
+    if (index(line, dash) > 0) {
+      printf "real: warning: %s:%d has an em dash. Use a period, a colon or a comma.\n", file, ln > "/dev/stderr"
+    }
+    if (line ~ /^#+ /) {
+      text = line; sub(/^#+ +/, "", text)
+      n = split(text, w, / +/); long = 0; caps = 0
+      for (i = 1; i <= n; i++) {
+        if (w[i] ~ /^[A-Za-z]/ && length(w[i]) > 3) { long++; if (w[i] ~ /^[A-Z]/) caps++ }
+      }
+      if (n >= 3 && long >= 2 && long == caps) {
+        printf "real: warning: %s:%d has a title-case heading. Use sentence case.\n", file, ln > "/dev/stderr"
+      }
+    }
+    ln++
+  }
+'
+exit 0

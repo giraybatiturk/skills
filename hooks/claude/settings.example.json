@@ -1,0 +1,55 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/session-start.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/pre-tool-use.sh", "timeout": 10 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/dangerous-command.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Read|Edit|MultiEdit|Write|NotebookEdit|Grep|Glob|Bash",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/protect-secrets.sh", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/protect-tests.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/post-format.sh", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/stop-gate.sh", "timeout": 300 }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt",
+        "hooks": [
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/notify.sh", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

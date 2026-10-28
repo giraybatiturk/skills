@@ -1,0 +1,12 @@
+# .real-hooks: commands for the agent hooks (hooks/claude). One "key = value" for each line.
+# An environment variable REAL_<KEY> (dots and dashes become underscores) wins over this file.
+# Without a gate command, stop-gate.sh uses the npm scripts "typecheck", "lint" and "test" when package.json has them.
+
+gate.typecheck = npx tsc --noEmit
+gate.lint = npx eslint . --max-warnings 0
+gate.test = npm test --silent
+gate.max-retries = 2
+
+# Formatter and syntax check of the edited file only. {file} is the path of the file.
+# format.cmd = npx prettier --write {file}
+# check.cmd = node --check {file}
