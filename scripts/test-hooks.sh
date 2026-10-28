@@ -79,7 +79,7 @@ wf() { mkdir -p "$(dirname "$R/$1")"; printf '%s\n' "$2" > "$R/$1"; }
 
 # ---------- static checks ----------
 section "static checks"
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/real-contract.sh "$ROOT"/skills/product/real-plan/scripts/real-contract.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
   if sh -n "$f" 2>/dev/null; then ok; else bad "syntax: $f"; fi
 done
 for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh "$ROOT"/scripts/real-approvals.sh "$ROOT"/scripts/test-real-approvals.sh "$ROOT"/scripts/real-status.sh "$ROOT"/scripts/test-real-status.sh; do
@@ -293,6 +293,132 @@ expect_silent "silent when core.hooksPath is the installed path"
 git -C "$R" config core.hooksPath "$TMP/ss/other"
 run "$CL/session-start.sh" "$J"
 has "warns when core.hooksPath changed" "$OUT" "changed"
+
+# ---------- contract script finder (skill folder) ----------
+section "real-contract.sh finder in the skill folder"
+SHIM=$ROOT/skills/product/real-plan/scripts/real-contract.sh
+[ -x "$SHIM" ] && ok || bad "the finder script is not executable"
+# 1. A symlinked skill folder, like the one that install-local.sh makes. No config, no variable.
+mkdir -p "$TMP/skills-home"
+ln -s "$ROOT/skills/product/real-plan" "$TMP/skills-home/real-plan"
+mkrepo feature
+git -C "$R" config --local --unset real.skillsHome
+(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$TMP/skills-home/real-plan/scripts/real-contract.sh" new via-link >/dev/null 2>&1) && ok || bad "the finder must work from a symlinked skill folder"
+[ -f "$R/.real/contract.md" ] && ok || bad "the finder (symlink) wrote no contract"
+eq "the finder passes the arguments" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-link"
+# 2. A copied skill folder, with no repo around it. It needs real.skillsHome, REAL_SKILLS_HOME or the plugin root.
+mkdir -p "$TMP/copy"
+cp -R "$ROOT/skills/product/real-plan" "$TMP/copy/real-plan"
+COPY=$TMP/copy/real-plan/scripts/real-contract.sh
+mkrepo feature
+RC=0; ERR=$(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT git config --local --unset real.skillsHome; cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$COPY" show 2>&1 >/dev/null) || RC=$?
+eq "a copied folder with no setup exits with 3" "$RC" "3"
+has "the error names REAL_SKILLS_HOME" "$ERR" "REAL_SKILLS_HOME"
+has "the error names install-hooks.sh" "$ERR" "install-hooks.sh"
+(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$COPY" new via-var >/dev/null 2>&1) && bad "must not write a contract" || ok
+(cd "$R" && REAL_SKILLS_HOME=$ROOT sh "$COPY" new via-var >/dev/null 2>&1) && ok || bad "REAL_SKILLS_HOME must work"
+eq "REAL_SKILLS_HOME runs the script" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-var"
+rm -rf "$R/.real"
+(cd "$R" && env -u REAL_SKILLS_HOME CLAUDE_PLUGIN_ROOT=$ROOT sh "$COPY" new via-plugin >/dev/null 2>&1) && ok || bad "CLAUDE_PLUGIN_ROOT must work"
+eq "CLAUDE_PLUGIN_ROOT runs the script" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-plugin"
+rm -rf "$R/.real"
+sh "$ROOT/scripts/install-hooks.sh" "$R" >/dev/null
+eq "install-hooks sets real.skillsHome" "$(git -C "$R" config --local real.skillsHome)" "$(cd "$ROOT" && pwd -P)"
+(cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT sh "$COPY" new via-config >/dev/null 2>&1) && ok || bad "real.skillsHome must work"
+eq "real.skillsHome runs the script" "$(sed -n 1p "$R/.real/contract.md")" "Task: via-config"
+sh "$ROOT/scripts/install-hooks.sh" --uninstall "$R" >/dev/null
+[ -z "$(git -C "$R" config --local real.skillsHome || true)" ] && ok || bad "uninstall did not unset real.skillsHome"
+out=$(sh "$ROOT/scripts/install-hooks.sh" --print "$R")
+has "--print mentions real.skillsHome" "$out" "real.skillsHome"
+[ -z "$(git -C "$R" config --local real.skillsHome || true)" ] && ok || bad "--print must not set real.skillsHome"
+# 3. The finder never runs itself in a loop, and the doc has no bare script path.
+mkdir -p "$TMP/onpath"
+cp "$SHIM" "$TMP/onpath/real-contract.sh"
+RC=0; (cd "$R" && env -u REAL_SKILLS_HOME -u CLAUDE_PLUGIN_ROOT PATH="$TMP/onpath:$PATH" sh "$TMP/onpath/real-contract.sh" show >/dev/null 2>&1) || RC=$?
+eq "the finder skips itself on PATH" "$RC" "3"
+if grep -n 'scripts/real-contract.sh' "$ROOT/skills/product/real-plan/references/contract.md" | grep -v '<skill>/scripts/real-contract.sh' | grep -q .; then bad "contract.md has a bare scripts/real-contract.sh path"; else ok; fi
+grep -q 'real-hooks-managed' "$SHIM" && bad "the finder must not carry the hook marker" || ok
+
+# ---------- contract script ----------
+section "real-contract.sh"
+RCS=$ROOT/scripts/real-contract.sh
+mkrepo feature
+RC=0; (cd "$R" && sh "$RCS" new demo-task --owner tester >/dev/null 2>"$TMP/err") || RC=$?
+eq "new succeeds" "$RC" "0"
+has "new warns when .real/ is not ignored" "$(cat "$TMP/err")" "not ignored"
+[ -f "$R/.real/contract.md" ] && ok || bad "new wrote no contract"
+eq "the template is a draft" "$(sed -n 2p "$R/.real/contract.md")" "Status: draft"
+eq "the owner is set" "$(sed -n 3p "$R/.real/contract.md")" "Owner: tester"
+for s in OBJECTIVE CONTEXT SCOPE "DO NOT TOUCH" DEPENDENCIES "EXPECTED OUTPUT" "DONE WHEN"; do
+  grep -q "^## $s\$" "$R/.real/contract.md" && ok || bad "the template lacks the section $s"
+done
+RC=0; (cd "$R" && sh "$RCS" new demo-task >/dev/null 2>&1) || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "new must not overwrite a contract"
+RC=0; (cd "$R" && sh "$RCS" new 'Bad Slug' >/dev/null 2>&1) || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "new must refuse a bad slug"
+RC=0; (cd "$R" && sh "$RCS" approve >/dev/null 2>"$TMP/err") || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "approve must refuse an empty SCOPE"
+has "approve names the empty SCOPE" "$(cat "$TMP/err")" "SCOPE is empty"
+sed -i.bak -e 's|^<one path or glob for each bullet.*$|- src/feature/**|' -e 's|^<one measurable item.*$|- the unit tests pass|' -e 's|^<paths and areas that are off limits.*$|- src/payments/**|' "$R/.real/contract.md"; rm -f "$R/.real/contract.md.bak"
+(cd "$R" && sh "$RCS" approve >/dev/null)
+eq "approve sets the status" "$(sed -n 2p "$R/.real/contract.md")" "Status: active"
+RC=0; (cd "$R" && sh "$RCS" approve >/dev/null 2>&1) || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "only a draft can be approved"
+out=$(cd "$R" && sh "$RCS" check src/feature/a.ts); has "check: in scope" "$out" "in scope (src/feature/**)"
+RC=0; out=$(cd "$R" && sh "$RCS" check src/payments/a.ts) || RC=$?; has "check: DO NOT TOUCH" "$out" "DO NOT TOUCH"; [ "$RC" -ne 0 ] && ok || bad "check exits non-zero for DO NOT TOUCH"
+RC=0; out=$(cd "$R" && sh "$RCS" check other.txt) || RC=$?; has "check: outside SCOPE" "$out" "outside SCOPE"
+(cd "$R" && sh "$RCS" add-scope 'docs/*.md' >/dev/null)
+out=$(cd "$R" && sh "$RCS" check docs/a.md); has "add-scope adds a glob" "$out" "in scope (docs/*.md)"
+RC=0; (cd "$R" && sh "$RCS" add-scope src/payments/z >/dev/null 2>"$TMP/err") || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "add-scope must refuse a path in DO NOT TOUCH"
+has "add-scope says that DO NOT TOUCH wins" "$(cat "$TMP/err")" "DO NOT TOUCH wins"
+out=$(cd "$R" && sh "$RCS" show); has "show lists SCOPE" "$out" "docs/*.md"
+RC=0; (cd "$R" && sh "$RCS" done >/dev/null 2>"$TMP/err") || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "done must fail while an item is unverified"
+has "done names the open item" "$(cat "$TMP/err")" "Item 1 has no claim"
+out=$(cd "$R" && sh "$RCS" report)
+has "the report has the table header" "$out" "| # | DONE WHEN item | Claimed | Verified (evidence id) | Status |"
+has "the report: an unclaimed item is unverified" "$out" "| 1 | the unit tests pass | no | - | unverified |"
+has "the report verdict: not verified" "$out" "Verdict: not verified"
+printf '{"id":"e1","time":"t","exit":0,"hash":"h","command":"npm test"}\n' > "$R/.real/evidence.jsonl"
+printf '1 | done | e1 | ok\n' > "$R/.real/claims.md"
+out=$(cd "$R" && sh "$RCS" report)
+has "the report: a proven item is verified" "$out" "| 1 | the unit tests pass | yes | e1 | verified |"
+has "the report verdict: verified" "$out" "Verdict: verified (1 verified, 0 unverified, 0 could not measure)"
+printf '1 | done | e7 | ok\n' > "$R/.real/claims.md"
+out=$(cd "$R" && sh "$RCS" report)
+has "the report: an invented id is unverified" "$out" "| 1 | the unit tests pass | yes | e7 | unverified |"
+# An agent can number the items. A numbered item counts like a bullet.
+R_KEEP=$R
+mkrepo feature
+(cd "$R" && sh "$RCS" new numbered >/dev/null 2>&1)
+sed -i.bak -e 's|^<one path or glob for each bullet.*$|1. src/feature/**|' -e 's|^<one measurable item.*$|1. the unit tests pass\n2) the lint passes|' -e 's|^<paths and areas that are off limits.*$|- src/payments/**|' "$R/.real/contract.md"; rm -f "$R/.real/contract.md.bak"
+RC=0; (cd "$R" && sh "$RCS" approve >/dev/null 2>"$TMP/err") || RC=$?
+eq "approve accepts numbered items" "$RC" "0"
+out=$(cd "$R" && sh "$RCS" report)
+has "the report lists a numbered item 1" "$out" "| 1 | the unit tests pass | no | - | unverified |"
+has "the report lists a numbered item 2" "$out" "| 2 | the lint passes | no | - | unverified |"
+R=$R_KEEP
+printf '1 | done | e1 | ok\n' > "$R/.real/claims.md"
+(cd "$R" && sh "$RCS" done >/dev/null) && ok || bad "done must succeed when all items are verified"
+eq "done sets the status" "$(sed -n 2p "$R/.real/contract.md")" "Status: done"
+(cd "$R" && sh "$RCS" archive >/dev/null)
+ls "$R"/docs/contracts/*-demo-task.md >/dev/null 2>&1 && ok || bad "archive wrote no file"
+has "the archive holds the report" "$(cat "$R"/docs/contracts/*-demo-task.md)" "Verdict: verified"
+(cd "$R" && sh "$RCS" reopen >/dev/null)
+eq "reopen sets the status" "$(sed -n 2p "$R/.real/contract.md")" "Status: active"
+printf '1 | could-not-measure | | verifier: the user\n' > "$R/.real/claims.md"
+out=$(cd "$R" && sh "$RCS" report)
+has "the report: could not measure" "$out" "| 1 | the unit tests pass | could not measure | - (verifier: the user) | could not measure |"
+has "the report verdict: could not measure only is not verified" "$out" "Verdict: not verified"
+RC=0; sh "$RCS" bogus >/dev/null 2>&1 || RC=$?
+[ "$RC" -ne 0 ] && ok || bad "an unknown command must fail"
+mkrepo feature
+git -C "$R" config --local core.excludesFile /dev/null
+printf '.real/\n' >> "$R/.git/info/exclude"
+(cd "$R" && sh "$RCS" new quiet-task >/dev/null 2>"$TMP/err")
+hasnt "no ignore warning when .real/ is ignored" "$(cat "$TMP/err")" "not ignored"
+[ -z "$(git -C "$R" status --porcelain | grep '\.real')" ] && ok || bad ".real/ shows in git status although it is ignored"
 
 # ---------- Claude hooks, with and without jq ----------
 MODES=1
@@ -912,6 +1038,242 @@ EOF
   printf 'open.guard = on\n' > "$F/.real-hooks"
   run "$O" "$(bj 'open x' "$F")"; expect_block "open.guard = on in .real-hooks"
   rm -f "$F/.real-hooks"
+  # ---------- task contract ----------
+  CG=$CL/contract-guard.sh; EL=$CL/evidence-log.sh; CS=$CL/contract-stop.sh; CT=$CL/contract-start.sh
+  mkcontract() { # mkcontract STATUS. A feature repo with a contract. Sets R.
+    mkrepo feature
+    mkdir -p "$R/.real"
+    printf 'Task: demo\nStatus: %s\nOwner: tester\n\n## OBJECTIVE\nOne result.\n## CONTEXT\n- README.md\n## SCOPE\n- src/feature/**\n- `docs/*.md`\n- notes.txt <!-- a comment -->\n## DO NOT TOUCH\n- src/payments/**\n- src/feature/secret.txt\n## DEPENDENCIES\nnone\n## EXPECTED OUTPUT\n- a PR\n## DONE WHEN\n- the unit tests pass\n- the page shows the counter\n' "$1" > "$R/.real/contract.md"
+  }
+  apj() { # apj CWD PATCH
+    printf '{"hook_event_name":"PreToolUse","tool_name":"apply_patch","cwd":"%s","tool_input":{"command":"%s"}}' "$1" "$(js "$2")"
+  }
+  cbj() { printf '{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"%s","tool_input":{"command":"%s"}}' "$R" "$(js "$1")"; }
+  cej() { ej "$R" "$1" "a" "b"; }
+
+  section "contract guard: no contract ($label)"
+  mkrepo feature
+  run "$CG" "$(cej "$R/a.txt")"; expect_allow "a first edit with no contract"
+  wf a.txt 1; wf b.txt 1; wf c.txt 1
+  run "$CG" "$(cej "$R/a.txt")"; expect_allow "an edit of a file that is already changed"
+  run "$CG" "$(cej "$R/d.txt")"; expect_ask "the 4th changed file needs a contract (ask)"
+  has "the reason names the file" "$OUT" "d.txt"
+  has "the reason says why" "$OUT" "more than 3 files"
+  run "$CG" "$(cej "$R/d.txt")" REAL_ASK_MODE=deny; expect_block "the 4th changed file is blocked in deny mode (Codex)"
+  run "$CG" "$(cej "$R/d.txt")" REAL_CONTRACT_MODE=block; expect_block "contract.mode = block"
+  run "$CG" "$(cej "$R/d.txt")" REAL_CONTRACT_REQUIRED=off; expect_allow "contract.required = off"
+  run "$CG" "$(cej "$R/d.txt")" REAL_ALLOW_SCOPE=1; expect_allow "REAL_ALLOW_SCOPE=1 in the hook environment"
+  run "$CG" "$(cej "$R/d.txt")" REAL_CONTRACT_GUARD=0; expect_allow "REAL_CONTRACT_GUARD=0"
+  run "$CG" "$(cej "$R/.real/claims.md")"; expect_allow "the claims file is not counted"
+  run "$CG" "$(fj Read "$R/d.txt")"; expect_allow "a non-edit tool is ignored"
+  mkrepo feature
+  run "$CG" "$(cej "$R/a.txt")" REAL_CONTRACT_REQUIRED=always; expect_ask "contract.required = always asks for a contract at the first edit"
+  printf 'contract.required = always\ncontract.mode = block\n' > "$R/.real-hooks"
+  run "$CG" "$(cej "$R/a.txt")"; expect_block "the .real-hooks file sets required and mode"
+  mkcontract draft
+  run "$CG" "$(cej "$R/other.txt")"; expect_allow "a draft contract is not enforced"
+  wf a.txt 1; wf b.txt 1; wf c.txt 1
+  run "$CG" "$(cej "$R/d.txt")"; expect_ask "a draft contract does not count as a contract for the 4th file"
+  run "$CG" "$(cej "$R/.real/contract.md")"; expect_allow "the draft contract can be edited"
+
+  section "contract guard: active contract ($label)"
+  mkcontract active
+  run "$CG" "$(cej "$R/src/feature/a.ts")"; expect_allow "in SCOPE (glob)"
+  run "$CG" "$(cej "src/feature/deep/b.ts")"; expect_allow "in SCOPE (relative path)"
+  run "$CG" "$(cej "$R/docs/readme.md")"; expect_allow "in SCOPE (backticks are removed)"
+  run "$CG" "$(cej "$R/notes.txt")"; expect_allow "in SCOPE (an HTML comment is removed)"
+  run "$CG" "$(cej "$R/other.txt")"; expect_ask "outside SCOPE (ask)"
+  has "the reason names the path" "$OUT" "other.txt"
+  has "the reason names the rule" "$OUT" "outside SCOPE"
+  has "the reason names the command for the user" "$OUT" "add-scope other.txt"
+  run "$CG" "$(cej "$R/other.txt")" REAL_ASK_MODE=deny; expect_block "outside SCOPE is blocked in deny mode"
+  has "the block message names the path" "$ERR" "other.txt"
+  run "$CG" "$(cej "$R/src/payments/x.ts")"; expect_ask "inside DO NOT TOUCH"
+  has "the reason names DO NOT TOUCH" "$OUT" "DO NOT TOUCH (src/payments/**)"
+  run "$CG" "$(cej "$R/src/feature/secret.txt")" REAL_ASK_MODE=deny; expect_block "DO NOT TOUCH wins over SCOPE"
+  has "the reason says that it wins" "$ERR" "wins over SCOPE"
+  run "$CG" "$(cej "$R/src/feature/../payments/y.ts")" REAL_ASK_MODE=deny; expect_block "a .. path into DO NOT TOUCH"
+  run "$CG" "$(cej "$R/src/feature/../../outside.txt")" REAL_ASK_MODE=deny; expect_block "a .. path out of the worktree and out of SCOPE"
+  ln -s /usr "$R/usrlink"
+  run "$CG" "$(cej "$R/usrlink/x")" REAL_ASK_MODE=deny; expect_block "a symlink out of the worktree"
+  run "$CG" "$(cej "/usr/local/x")" REAL_ASK_MODE=deny; expect_block "an absolute path out of the worktree"
+  run "$CG" "$(cej "$TMP/scratch.txt")"; expect_allow "a scratch file in the temp folder"
+  run "$CG" "$(cej "$R/.real/contract.md")" REAL_ASK_MODE=deny; expect_block "an agent cannot edit an active contract"
+  has "the reason names the command for the user" "$ERR" "add-scope"
+  run "$CG" "$(cej "$R/.real/evidence.jsonl")" REAL_ASK_MODE=deny; expect_block "an agent cannot edit the evidence log"
+  run "$CG" "$(cej "$R/.real/claims.md")"; expect_allow "the claims file is allowed"
+  run "$CG" "$(cej "$R/docs/contracts/2026-01-01-demo.md")"; expect_allow "the archive folder is allowed"
+  run "$CG" "$(wj "$R" "$R/src/payments/z.ts" "x")" REAL_ASK_MODE=deny; expect_block "Write inside DO NOT TOUCH"
+  run "$CG" "$(printf '{"tool_name":"NotebookEdit","cwd":"%s","tool_input":{"notebook_path":"%s"}}' "$R" "$R/src/payments/n.ipynb")" REAL_ASK_MODE=deny; expect_block "NotebookEdit inside DO NOT TOUCH"
+  run "$CG" "$(printf '{"tool_name":"MultiEdit","cwd":"%s","tool_input":{"file_path":"%s","edits":[]}}' "$R" "$R/other.txt")" REAL_ASK_MODE=deny; expect_block "MultiEdit outside SCOPE"
+  printf 'contract.mode = block\n' > "$R/.real-hooks"
+  run "$CG" "$(cej "$R/other.txt")"; expect_block "contract.mode = block in the .real-hooks file"
+  rm -f "$R/.real-hooks"
+  printf 'Task: empty\nStatus: active\n\n## SCOPE\n## DO NOT TOUCH\n' > "$R/.real/contract.md"
+  run "$CG" "$(cej "$R/a.txt")" REAL_ASK_MODE=deny; expect_block "an empty SCOPE blocks every edit"
+  has "the reason says SCOPE is empty" "$ERR" "SCOPE"
+
+  section "contract guard: Codex apply_patch ($label)"
+  mkcontract active
+  P1='*** Begin Patch
+*** Update File: src/feature/a.ts
+@@
+-a
++b
+*** End Patch'
+  P2='*** Begin Patch
+*** Update File: src/feature/a.ts
+@@
+-a
++b
+*** Add File: other.txt
++x
+*** End Patch'
+  P3='*** Begin Patch
+*** Update File: src/feature/a.ts
+*** Move to: src/payments/a.ts
+@@
+-a
++b
+*** End Patch'
+  run "$CG" "$(apj "$R" "$P1")" REAL_ASK_MODE=deny; expect_allow "a patch inside SCOPE"
+  run "$CG" "$(apj "$R" "$P2")" REAL_ASK_MODE=deny; expect_block "a patch that adds a file outside SCOPE"
+  has "the block message names the file" "$ERR" "other.txt"
+  run "$CG" "$(apj "$R" "$P3")" REAL_ASK_MODE=deny; expect_block "a patch that moves a file into DO NOT TOUCH"
+  run "$CG" "$(apj "$R" "*** Begin Patch
+*** Delete File: src/payments/p.ts
+*** End Patch")" REAL_ASK_MODE=deny; expect_block "a patch that deletes a file in DO NOT TOUCH"
+
+  section "contract guard: Bash writes ($label)"
+  mkcontract active
+  run "$CG" "$(cbj 'echo hi > other.txt')"; expect_ask "a redirect outside SCOPE (ask)"
+  run "$CG" "$(cbj 'echo hi > other.txt')" REAL_ASK_MODE=deny; expect_block "a redirect outside SCOPE (block)"
+  run "$CG" "$(cbj 'echo hi >> src/payments/log.txt')" REAL_ASK_MODE=deny; expect_block "an append inside DO NOT TOUCH"
+  run "$CG" "$(cbj 'echo hi > src/feature/ok.txt')" REAL_ASK_MODE=deny; expect_allow "a redirect inside SCOPE"
+  run "$CG" "$(cbj 'echo hi | tee src/payments/t.txt')" REAL_ASK_MODE=deny; expect_block "tee inside DO NOT TOUCH"
+  run "$CG" "$(cbj 'sed -i s/a/b/ other.txt')" REAL_ASK_MODE=deny; expect_block "sed -i outside SCOPE"
+  run "$CG" "$(cbj 'sed s/a/b/ other.txt')" REAL_ASK_MODE=deny; expect_allow "sed without -i only reads"
+  run "$CG" "$(cbj 'rm -rf other.txt')" REAL_ASK_MODE=deny; expect_block "rm outside SCOPE"
+  run "$CG" "$(cbj 'mv src/feature/a.ts other.txt')" REAL_ASK_MODE=deny; expect_block "mv to a file outside SCOPE"
+  run "$CG" "$(cbj 'cp src/feature/a.ts other.txt')" REAL_ASK_MODE=deny; expect_block "cp to a file outside SCOPE"
+  run "$CG" "$(cbj 'cp other.txt src/feature/copy.txt')" REAL_ASK_MODE=deny; expect_allow "cp from a file outside SCOPE into SCOPE"
+  run "$CG" "$(cbj 'touch other.txt')" REAL_ASK_MODE=deny; expect_block "touch outside SCOPE"
+  run "$CG" "$(cbj 'cat other.txt; ls -la')" REAL_ASK_MODE=deny; expect_allow "a read-only command"
+  run "$CG" "$(cbj 'npm test > /dev/null 2>&1')" REAL_ASK_MODE=deny; expect_allow "a redirect to /dev/null"
+  run "$CG" "$(cbj 'npm test 2>&1 | tail -n 5')" REAL_ASK_MODE=deny; expect_allow "2>&1 is not a file"
+  run "$CG" "$(cbj 'tee -a src/feature/q.txt < other.txt')" REAL_ASK_MODE=deny; expect_allow "an input redirect is not a write"
+  run "$CG" "$(cbj 'echo hi > /tmp/scratch.txt')" REAL_ASK_MODE=deny; expect_allow "a redirect into /tmp"
+  run "$CG" "$(cbj 'echo hi > $HOME/x')" REAL_ASK_MODE=deny; expect_allow "a target with a variable is not guessed"
+  run "$CG" "$(cbj 'echo hi > other.txt && echo yes > src/feature/ok.txt')" REAL_ASK_MODE=deny; expect_block "the first target of two is outside SCOPE"
+  run "$CG" "$(cbj 'sh scripts/real-contract.sh approve')"; expect_ask "an agent that runs approve is asked"
+  run "$CG" "$(cbj 'sh ~/.claude/skills/real-plan/scripts/real-contract.sh approve')"; expect_ask "approve through the skill folder is asked"
+  run "$CG" "$(cbj 'sh /x/skills/product/real-plan/scripts/real-contract.sh add-scope a.txt')" REAL_ASK_MODE=deny; expect_block "add-scope through the skill folder is blocked in deny mode"
+  run "$CG" "$(cbj 'real-contract.sh add-scope other.txt')" REAL_ASK_MODE=deny; expect_block "add-scope is blocked in deny mode"
+  run "$CG" "$(cbj 'sh scripts/real-contract.sh report')"; expect_allow "the report command is allowed"
+  run "$CG" "$(cbj 'REAL_ALLOW_SCOPE=1 touch other.txt')"; expect_block "bypass variable set in the command"
+  run "$CG" "$(cbj 'echo hi > other.txt')" REAL_ALLOW_SCOPE=1; expect_allow "the bypass in the environment"
+  run "$CG" "$(cbj 'echo hi > .real/contract.md')" REAL_ASK_MODE=deny; expect_block "a redirect into the contract file"
+
+  section "evidence log ($label)"
+  mkcontract active
+  EV=$R/.real/evidence.jsonl
+  pj() { printf '{"hook_event_name":"%s","tool_name":"Bash","session_id":"s","cwd":"%s","tool_input":{"command":"%s"},"tool_response":{"stdout":"%s"}}' "$1" "$R" "$(js "$2")" "$3"; }
+  run "$EL" "$(pj PostToolUse 'npm test' 'ok 12 tests')"; expect_silent "the hook is silent"
+  run "$EL" "$(pj PostToolUseFailure 'npm run lint' 'error')"
+  run "$EL" "$(pj PostToolUse 'node --check a.js' 'x')"
+  eq "three lines" "$(wc -l < "$EV" | tr -d ' ')" "3"
+  has "the first id is e1" "$(sed -n 1p "$EV")" '"id":"e1"'
+  has "the third id is e3" "$(sed -n 3p "$EV")" '"id":"e3"'
+  has "a success has exit 0" "$(sed -n 1p "$EV")" '"exit":0'
+  has "a failure event has exit 1" "$(sed -n 2p "$EV")" '"exit":1'
+  has "the command is saved" "$(sed -n 1p "$EV")" '"command":"npm test"'
+  has "the line has a time" "$(sed -n 1p "$EV")" '"time":"20'
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 -c 'import json,sys; [json.loads(l) for l in open(sys.argv[1])]' "$EV" 2>/dev/null; then ok; else bad "the evidence log is not valid JSON lines"; fi
+  fi
+  run "$EL" "$(pj PostToolUse 'curl -H "Authorization: Bearer abcdefghijklmnop1234" --token ghp_abcdefghijklmnop12345 https://x.invalid' 'x')"
+  hasnt "a bearer value is masked" "$(cat "$EV")" "abcdefghijklmnop1234"
+  hasnt "a token value is masked" "$(cat "$EV")" "ghp_abcdefghijklmnop12345"
+  run "$EL" "$(printf '{"hook_event_name":"PostToolUse","tool_name":"Bash","cwd":"%s","tool_input":{"command":"false"},"tool_response":{"exit_code":7}}' "$R")"
+  has "a numeric exit code in the response is used" "$(tail -n 1 "$EV")" '"exit":7'
+  run "$EL" "$(pj PostToolUse 'make' 'x')" REAL_EVIDENCE_EXIT_DEFAULT=unknown
+  has "the Codex default is unknown" "$(tail -n 1 "$EV")" '"exit":"unknown"'
+  before=$(wc -l < "$EV" | tr -d ' ')
+  run "$EL" "$(printf '{"hook_event_name":"PostToolUse","tool_name":"Edit","cwd":"%s","tool_input":{"file_path":"x"}}' "$R")"
+  run "$EL" "$(pj PostToolUse 'ls' 'x')" REAL_EVIDENCE=0
+  eq "another tool and REAL_EVIDENCE=0 write nothing" "$(wc -l < "$EV" | tr -d ' ')" "$before"
+  mkcontract draft
+  run "$EL" "$(pj PostToolUse 'ls' 'x')"
+  [ -e "$R/.real/evidence.jsonl" ] && bad "a draft contract wrote evidence" || ok
+  mkrepo feature
+  run "$EL" "$(pj PostToolUse 'ls' 'x')"
+  [ -e "$R/.real" ] && bad "no contract: the hook created .real/" || ok
+
+  section "contract stop check ($label)"
+  csj() { printf '{"hook_event_name":"Stop","session_id":"%s","cwd":"%s","stop_hook_active":%s}' "$1" "$R" "$2"; }
+  mkcontract active
+  run "$CS" "$(csj c0 false)"; expect_silent "a clean worktree has nothing to prove"
+  git -C "$R" rev-parse HEAD > "$R/.real/base"
+  run "$CS" "$(csj c0b false)"; expect_silent "base equals HEAD: still nothing to prove"
+  wf src/feature/z.ts 1; git -C "$R" add -A; git -c user.name=t -c user.email=t@t -C "$R" commit -q -m work
+  run "$CS" "$(csj c0c false)"; expect_stop_block "work committed after the base commit still needs proof"
+  rm -f "$R/.real/base"
+  run "$CS" "$(csj c0d false)"; expect_silent "no base file: the old behaviour (clean worktree, nothing to prove)"
+  wf src/feature/a.ts 1
+  run "$CS" "$(csj c1 false)"; expect_stop_block "an item with no claim blocks the stop"
+  has "the reason names the item" "$OUT" "the unit tests pass"
+  has "the reason shows the claim format" "$OUT" "N | done | e3, e5 | note"
+  printf '{"id":"e1","time":"t","exit":0,"hash":"h","command":"npm test"}\n{"id":"e2","time":"t","exit":1,"hash":"h","command":"npm run lint"}\n{"id":"e3","time":"t","exit":"unknown","hash":"h","command":"make"}\n' > "$R/.real/evidence.jsonl"
+  printf '1 | done | e1 | tests ran\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c2 false)"; expect_stop_block "the second item has no claim"
+  has "only the open item is named" "$OUT" "Item 2"
+  hasnt "the proven item is not named" "$OUT" "Item 1"
+  printf '1 | done | e1 | tests ran\n2 | done | e9 | page\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c3 false)"; expect_stop_block "an unknown evidence id is not proof"
+  has "the reason names the unknown id" "$OUT" "e9"
+  printf '1 | done | e1 | tests ran\n2 | done | e2 | page\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c4 false)"; expect_stop_block "evidence of a failed command is not proof"
+  has "the reason says that it failed" "$OUT" "failed (exit 1)"
+  printf '1 | done | | tests ran\n2 | done | e1 | page\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c5 false)"; expect_stop_block "a done claim with no id is not proof"
+  printf '1 | done | e1 | tests ran\n2 | could-not-measure | | \n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c6 false)"; expect_stop_block "could-not-measure needs a verifier"
+  printf '1 | done | e1 | tests ran\n2 | maybe | e1 | x\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c7 false)"; expect_stop_block "an unknown claim status is not proof"
+  printf '1 | done | e1, e3 | tests ran\n2 | could-not-measure | | verifier: the user opens the page\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c8 false)"; expect_silent "all items proven or marked with a verifier"
+  printf '1 | done | e1 | tests ran\n' > "$R/.real/claims.md"
+  run "$CS" "$(csj c9 false)" REAL_ALLOW_UNVERIFIED=1; expect_silent "REAL_ALLOW_UNVERIFIED=1"
+  run "$CS" "$(csj c9 false)" REAL_CONTRACT_STOP=0; expect_silent "REAL_CONTRACT_STOP=0"
+  rm -f "$R/.real/claims.md"
+  run "$CS" "$(csj r1 false)"; expect_stop_block "retry 1 blocks"
+  run "$CS" "$(csj r1 true)"; expect_stop_block "retry 2 blocks"
+  run "$CS" "$(csj r1 true)"
+  has "after the cap the hook lets the agent stop and warns" "$OUT" "systemMessage"
+  hasnt "after the cap there is no block" "$OUT" '"decision"'
+  mkcontract draft
+  wf src/feature/a.ts 1
+  run "$CS" "$(csj d1 false)"; expect_silent "a draft contract is not checked"
+  mkrepo feature
+  wf a.txt 1
+  run "$CS" "$(csj d2 false)"; expect_silent "no contract"
+
+  section "contract start ($label)"
+  mkcontract active
+  stj() { printf '{"hook_event_name":"SessionStart","cwd":"%s"}' "$R"; }
+  run "$CT" "$(stj)"
+  has "the task is named" "$OUT" "demo"
+  has "SCOPE is listed" "$OUT" "src/feature/**, docs/*.md, notes.txt"
+  has "DO NOT TOUCH is listed" "$OUT" "src/payments/**"
+  has "it uses additionalContext" "$OUT" "additionalContext"
+  has "it says the claims file is always allowed" "$OUT" "claims.md is always allowed"
+  [ "${#OUT}" -le 1400 ] && ok || bad "the start message is too long: ${#OUT}"
+  mkcontract draft
+  run "$CT" "$(stj)"; has "a draft is named" "$OUT" "draft"
+  mkrepo feature
+  run "$CT" "$(stj)"; expect_silent "no contract: silent"
+  run "$CT" "$(stj)" REAL_CONTRACT_REQUIRED=always; has "required = always says no contract" "$OUT" "no contract"
+  run "$CT" "$(stj)" REAL_CONTRACT_START=0 REAL_CONTRACT_REQUIRED=always; expect_silent "REAL_CONTRACT_START=0"
 done
 NOJQ=0
 

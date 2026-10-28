@@ -12,6 +12,8 @@
 #
 # The script backs up every existing hook that is not a real hook. The backup name is
 # <hook>.real-backup-YYYYmmddHHMMSS in the same folder.
+# The script also sets real.skillsHome in the local git config of REPO. It is the path of this checkout.
+# The skill script skills/product/real-plan/scripts/real-contract.sh uses it to find scripts/real-contract.sh.
 # The script never edits ~/.claude/settings.json, ~/.codex or the global git config.
 # At the end it prints the Claude Code settings snippet. Copy it by hand.
 
@@ -27,7 +29,7 @@ while [ $# -gt 0 ]; do
     --print) dry=yes ;;
     --uninstall) uninstall=yes ;;
     --hooks-path) shift; [ $# -gt 0 ] || { echo "install-hooks: --hooks-path needs a folder." >&2; exit 2; }; hookspath=$1 ;;
-    -h|--help) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*) echo "install-hooks: unknown option: $1" >&2; exit 2 ;;
     *) repo=$1 ;;
   esac
@@ -38,6 +40,7 @@ done
 here=$(cd "$(dirname "$0")" && pwd)
 src=$here/../hooks/git
 claude_dir=$(cd "$here/../hooks/claude" && pwd)
+skills_home=$(cd "$here/.." && pwd -P)
 [ -d "$src" ] || { echo "install-hooks: hooks/git was not found next to this script." >&2; exit 1; }
 src=$(cd "$src" && pwd)
 
@@ -88,6 +91,10 @@ if [ "$uninstall" = yes ]; then
     fi
     do_it git -C "$top" config --local --unset real.hooksPath || true
   fi
+  if [ "$(git -C "$top" config --local --get real.skillsHome 2>/dev/null || true)" = "$skills_home" ]; then
+    say "unset real.skillsHome"
+    do_it git -C "$top" config --local --unset real.skillsHome
+  fi
   [ "$dry" = yes ] && echo "Dry run. Nothing was changed." || echo "Uninstall done."
   exit 0
 fi
@@ -119,6 +126,9 @@ if [ -n "$hookspath" ]; then
   do_it git -C "$top" config --local core.hooksPath "$dest"
   do_it git -C "$top" config --local real.hooksPath "$dest"
 fi
+
+say "set real.skillsHome to $skills_home (local config of $top)"
+do_it git -C "$top" config --local real.skillsHome "$skills_home"
 
 [ "$dry" = yes ] && echo "Dry run. Nothing was changed."
 

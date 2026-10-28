@@ -67,6 +67,11 @@ Optional handoff to measure: the approved plan has a Measure block with a planne
 - Add this line only if `real-measure` is in the skill catalog of your tool. Otherwise skip it silently.
 - Never start `real-measure` yourself. It runs when the user asks, after release.
 
+Contract mode: the approved plan changes more than 3 files, or the user asks for a work order for an agent. Then read `references/contract.md`. Write the contract before you change files.
+- The contract sets SCOPE, DO NOT TOUCH and measurable DONE WHEN items. The user approves it.
+- At the end, report what the agent claims and what it verified, with evidence.
+- A smaller change needs no contract.
+
 This workflow needs real-audit from the same bundle.
 - Resolve its installed location from the skill catalog of your tool. Or use the adjacent `../real-audit` folder if it is there.
 - If it is not available, report the missing dependency. Ask the user to install the full Real bundle. Do not invent its rules. Do not continue dependent work.
