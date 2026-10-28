@@ -1,0 +1,42 @@
+# Approvals table. Copy this file to .real/approvals.yml in a repo, or to ~/.config/real/approvals.yml for all repos.
+# Keep your real table private. This file is only a generic example.
+#
+# A rule starts with "- id:" at column 1. The next lines start with two spaces. Every rule has id, mode and why.
+# It has one of tool or command.
+#   id:      lower case letters, digits and "-", at most 64 characters, unique in one file.
+#   tool:    tool names with * (any text) and ? (one character). Split alternatives with |.
+#   command: Bash command words with the same wildcards. A pattern matches from any command word. Split alternatives with |.
+#   mode:    auto (no output), ask (the client asks and shows the reason), deny (blocked, with the reason).
+#   why:     one line of text for the user and for the agent.
+# When two rules match, the stricter mode wins: deny, then ask, then auto.
+# An MCP tool with a write verb in its name and no tool rule asks (id default-write).
+# Run: real-approvals.sh check
+
+- id: tracker-write
+  tool: mcp__tracker__*create*|mcp__tracker__*update*|mcp__tracker__*comment*
+  mode: ask
+  why: Show the text first and wait for approval.
+- id: tracker-bulk
+  tool: mcp__tracker__*update_many*
+  mode: deny
+  why: Bulk updates are not allowed. Update one task at a time.
+- id: tracker-delete
+  tool: mcp__tracker__delete_task|mcp__tracker__delete_project|mcp__tracker__*remove*
+  mode: deny
+  why: A delete cannot be undone.
+- id: mail-send
+  tool: mcp__mail__*send*
+  mode: ask
+  why: A sent message cannot be unsent.
+- id: merge
+  command: gh pr merge|glab mr merge
+  mode: deny
+  why: Only the owner merges.
+- id: deploy
+  command: vercel --prod|wrangler deploy|npm publish
+  mode: ask
+  why: Deploy only when the owner says so.
+- id: local-build
+  command: make|npm run build|swift build
+  mode: auto
+  why: A local build is safe.

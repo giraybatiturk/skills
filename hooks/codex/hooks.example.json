@@ -30,6 +30,12 @@
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/protect-tests.sh", "timeout": 10 }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "REAL_ASK_MODE=deny /ABSOLUTE/PATH/TO/skills/hooks/claude/real-approvals-hook.sh", "timeout": 10 }
+        ]
       }
     ],
     "PostToolUse": [
