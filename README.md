@@ -70,6 +70,18 @@ Triggered work uses at least two independent perspectives and an adversarial ver
 
 If a family is unavailable, use the nearest capability tier. The verifier cannot be weaker than the strongest producer it checks.
 
+## Working rules (real.md)
+
+`real.md` at the repository root is a short, tool-agnostic set of working rules for coding agents (Claude Code, Codex, omp, Cursor): behaviour, accuracy, writing style, language, memory and git flow. Domain files live in `real/` and are read on trigger through the index lines in `real.md`; they are plain paths, not imports. They add to the seven workflows and only point to `real-plan`, `real-audit` and the orchestration section above, so each rule has one home.
+
+- Load order: `real.md` first, then an optional private `real.local.md` from the owner's own private repository. The private overlay is never part of this repository.
+- Pointer files: Claude Code can import both files with `@` lines. For tools without imports, `scripts/install-real-md.sh` generates one combined file (for example an `AGENTS.md`); it backs up an existing target first and refuses symlinks. Run it with `--print` to preview.
+- `scripts/install-local.sh` is unchanged: it links the seven workflows and never writes instruction files.
+
+## Writing standard
+
+The `real` working rules (`real.md` and `real/`) follow ASD-STE100 Simplified Technical English style. The glossary of fixed terms is in [docs/ste-glossary.md](docs/ste-glossary.md). Run `python3 scripts/ste-lint.py real.md real/*.md` to find long sentences and banned words.
+
 ## Install
 
 ### Claude Code plugin

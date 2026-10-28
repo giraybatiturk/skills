@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Note: this script only links the seven workflows. It never writes CLAUDE.md or AGENTS.md.
+# For the optional real.md working rules see scripts/install-real-md.sh (backs up first).
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 dest=${1:?Usage: bash scripts/install-local.sh DESTINATION}
 names=(real-start real-brainstorm real-plan real-audit real-check real-test real-research)
