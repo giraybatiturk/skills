@@ -34,7 +34,8 @@
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/post-format.sh", "timeout": 10 }
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/post-format.sh", "timeout": 10 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-ui-track.sh", "timeout": 10 }
         ]
       }
     ],
@@ -49,6 +50,7 @@
       {
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/stop-gate.sh", "timeout": 300 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-ui-stop.sh", "timeout": 10 },
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-turn-log.sh", "timeout": 10 },
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/notify.sh", "timeout": 10 }
         ]

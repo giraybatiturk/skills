@@ -28,7 +28,9 @@ Agent hooks run in Claude Code. Most of them run in Codex too.
 | `hooks/claude/protect-secrets.sh` | PreToolUse, file tools and Bash | Read, edit and write access to `.env*`, `*.pem`, `id_rsa` and `credentials`. It allows `.env.example` |
 | `hooks/claude/protect-tests.sh` | PreToolUse, Edit and Write | An edit of a test file that removes tests, adds `.skip`, `.only` or `xit`, or adds a trivial assertion |
 | `hooks/claude/post-format.sh` | PostToolUse, Edit and Write | Nothing. It formats the edited file and runs a syntax check. A failed check gives the agent the error |
+| `hooks/claude/real-ui-track.sh` | PostToolUse, Edit, Write and apply_patch | Nothing. It writes the time of an edit of a UI file to `.real/ui-dirty`. It runs only when `ui.url` is set |
 | `hooks/claude/stop-gate.sh` | Stop | The end of a turn while the typecheck, the lint or the tests fail |
+| `hooks/claude/real-ui-stop.sh` | Stop | The end of a turn, once for each UI edit, until `real-shot.mjs --after` has run. It runs only when `ui.url` is set |
 | `hooks/claude/notify.sh` | Notification | Nothing. It sends a desktop or webhook message when the agent waits for you |
 | `hooks/claude/real-turn-log.sh` | UserPromptSubmit and Stop | Nothing. It records the turn: start time, request, end time, `STATE:` line and background jobs |
 | `hooks/claude/notify.sh` | Stop | Nothing. It sends a banner when a turn of 120 s or more ends |
@@ -104,6 +106,9 @@ Put these keys in a `.real-hooks` file in the repo root. Use one `key = value` f
 | `check.cmd` | The check of one file. Defaults: `node --check`, `python3 -m py_compile` and `sh -n` |
 | `open.guard` | `off` turns off the open guard. Default: on |
 | `notify.min-seconds` | The shortest turn, in seconds, that gets a banner at Stop. Default: 120 |
+| `ui.url` | The address of your dev server, for example `http://127.0.0.1:5173/`. The two UI hooks do nothing without it |
+| `ui.globs` | The files that count as UI files. A comma list of patterns, where `*` also matches `/`. Default: `*.tsx,*.jsx,*.css,*.scss,*.html,*.vue,*.svelte` |
+| `ui.target-min` | The smallest touch target for `real-shot.mjs`, in px. A whole number from 1 to 200. Default: 40 |
 
 `hooks/examples/real-hooks.example` shows the file.
 
@@ -121,6 +126,7 @@ A bypass is for one command. The user sets it. The agent hooks block an agent th
 | `REAL_STOP_GATE=0`, `REAL_POST_FORMAT=0`, `REAL_NOTIFY=0`, `REAL_SESSION_CHECK=0` | The Stop gate, the formatter, the notifier and the session check |
 | `REAL_TURN_LOG=0` | The turn log |
 | `REAL_CONTEXT=0` | The context hook |
+| `REAL_UI_LOOP=0` | The two UI hooks, `real-ui-track.sh` and `real-ui-stop.sh` |
 | `REAL_OPEN_GUARD=off` | The open guard. Set it in the environment of the hook, not inside the command |
 | `REAL_SAFE_DELETES="a b"` | Adds names to the safe-delete list of the dangerous-command guard |
 | `REAL_SECRET_ALLOW="a b"` | Adds file names that the secret guard allows |
@@ -278,6 +284,20 @@ The script refuses a missing token file and a token file that group or others ca
 Put `real-context.sh` after `session-start.sh` and after the contract hook, when you use one, in the same SessionStart group. It does not repeat their text. It gives no git-hooks warning, no SCOPE and no DO NOT TOUCH. The contract line has only the task, the status and the open count. The Claude Code example has no matcher, so the hook also runs after compaction. The Codex example keeps the matcher `startup|resume`.
 
 omp: this mapping is not tested. `pi.on("before_agent_start", ...)` runs `real-context.sh` once for each session. The input is `{ hook_event_name: "SessionStart", source: "startup", cwd }`. The adapter returns `additionalContext` as a hidden message. It shows `systemMessage` as a visible message or as a notify call. Compaction is not checked.
+## UI before and after
+
+Two hooks support the `real-shot` mode of `real-test`. Both do nothing until `ui.url` is set.
+
+- `real-ui-track.sh` runs after each edit. When the edit touches a file that matches `ui.globs`, it writes the time to `.real/ui-dirty`.
+- `real-ui-stop.sh` runs when the agent wants to stop. If a UI edit came after the last capture, it blocks the stop once. It tells the agent to run `real-shot.mjs --after` and to give you the comparison link.
+
+The hooks keep three state files in the `.real/` folder of the repo:
+
+- `.real/ui-dirty` holds the time of the last UI edit.
+- `.real/ui-shot` holds the start time of the last `real-shot.mjs --after` run that worked.
+- `.real/ui-nagged` holds the edit time that the Stop hook already blocked for. A new UI edit writes a new time, so the next stop blocks again.
+
+`real-shot.mjs` writes its images and its comparison page to `.real/shots/`. Add `.real/` to `.git/info/exclude`, so that none of these files reach a commit.
 
 ## Client support
 
@@ -400,3 +420,4 @@ Run `sh scripts/test-real-ship.sh` for `real-ship.sh`. That script uses a tempor
 Run `sh scripts/test-real-context.sh` for the context hook, the handoff file and `scripts/real-mem.sh`. It runs each hook case with `jq` and without `jq`. It uses stubs for `gh`, `curl` and the memory command, so it needs no live service and no token.
 
 Run `sh scripts/test-real-await.sh` for `scripts/real-await.sh`. It uses temporary repos, a temporary HOME and stub tools. It stops only the processes that it started.
+For the UI hooks and `real-shot.mjs`, run `node scripts/test-real-shot.mjs` with Playwright and Chromium installed in `skills/engineering/real-check/scripts`.

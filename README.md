@@ -132,6 +132,7 @@ The folder [`hooks/`](hooks/README.md) holds optional guard hooks. They protect 
 - The same hook gives you a recap of 3 lines or less. It shows the last request, how the last turn ended, and the git and contract facts.
 - `scripts/real-await.sh` waits for a human step, such as a login, a download or a merge. It checks a file, a URL, a pull request, a command or a process, and exits when the check passes. The finished background job wakes the agent.
 - `/real-status` shows a `waiting:` line while a wait runs. Read [docs/real-await.md](docs/real-await.md) for the probes, the exit codes and the one notification.
+- Two UI hooks track edits of UI files. The Stop hook then asks the agent to run `real-shot` and show a before and after link. They need `ui.url` in `.real-hooks`.
 
 Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` to see what an install would do. Run `sh scripts/test-hooks.sh` to test the hooks in temporary repos. Read [hooks/README.md](hooks/README.md) for the settings and the client support.
 
@@ -144,7 +145,7 @@ Nothing is installed by default. Run `scripts/install-hooks.sh --print <repo>` t
 Three skills ship scripts:
 
 - `real-check`: `skills/engineering/real-check/scripts/check.mjs`, the scan itself.
-- `real-test`: `skills/engineering/real-test/scripts/guard.mjs`, `summary.mjs` and `visual.mjs`, plus `assets/fixtures.ts`, the observations fixture copied into your tests folder.
+- `real-test`: `skills/engineering/real-test/scripts/guard.mjs`, `summary.mjs`, `visual.mjs` and `real-shot.mjs` (before and after captures at 375 and 1280 px). `assets/fixtures.ts` is the observations fixture copied into your tests folder.
 - `real-audit`: `skills/product/real-audit/scripts/annotate-evidence.mjs`, which draws the marked screenshots of its evidence method. It needs Node 20+ and uses the Playwright and Chromium install of `real-check` next to it (or one in the current folder). It opens its own headless browser on the URLs in its spec (the page loads its own resources and counts as a visit) and writes only to the folder you give it. Without it, the audit keeps the original capture and describes the marked area in words.
 
 The other workflows are instructions only.
