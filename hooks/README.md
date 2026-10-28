@@ -24,6 +24,7 @@ Agent hooks run in Claude Code. Most of them run in Codex too.
 |---|---|---|
 | `hooks/claude/pre-tool-use.sh` | PreToolUse, Bash | `git commit` and `git push` in one command, a commit on `main`, `--no-verify`, a `core.hooksPath` override, a bypass variable set inside the command |
 | `hooks/claude/dangerous-command.sh` | PreToolUse, Bash | Denies `rm -rf` on broad targets, a force push to `main` and `curl \| sh`. Asks for `git reset --hard`, `git clean -fd`, other force pushes, other risky `rm -rf` and `DROP TABLE` |
+| `hooks/claude/real-open-guard.sh` | PreToolUse, Bash | A direct `open`, `xdg-open`, `python -m webbrowser` or a browser start that is not headless. It allows `real-show.sh` |
 | `hooks/claude/protect-secrets.sh` | PreToolUse, file tools and Bash | Read, edit and write access to `.env*`, `*.pem`, `id_rsa` and `credentials`. It allows `.env.example` |
 | `hooks/claude/protect-tests.sh` | PreToolUse, Edit and Write | An edit of a test file that removes tests, adds `.skip`, `.only` or `xit`, or adds a trivial assertion |
 | `hooks/claude/post-format.sh` | PostToolUse, Edit and Write | Nothing. It formats the edited file and runs a syntax check. A failed check gives the agent the error |
@@ -98,6 +99,7 @@ Put these keys in a `.real-hooks` file in the repo root. Use one `key = value` f
 | `gate.max-retries` | How many times the Stop gate blocks in a row. Default: 2 |
 | `format.cmd` | The formatter. Write `{file}` where the path goes. Default: the local `prettier`, when it exists |
 | `check.cmd` | The check of one file. Defaults: `node --check`, `python3 -m py_compile` and `sh -n` |
+| `open.guard` | `off` turns off the open guard. Default: on |
 
 `hooks/examples/real-hooks.example` shows the file.
 
@@ -113,12 +115,17 @@ A bypass is for one command. The user sets it. The agent hooks block an agent th
 | `REAL_ALLOW_TEST_EDIT=1` | The test-weakening guard |
 | `REAL_ALLOW_UNVERIFIED=1` | The Stop gate |
 | `REAL_STOP_GATE=0`, `REAL_POST_FORMAT=0`, `REAL_NOTIFY=0`, `REAL_SESSION_CHECK=0` | The Stop gate, the formatter, the notifier and the session check |
+| `REAL_OPEN_GUARD=off` | The open guard. Set it in the environment of the hook, not inside the command |
 | `REAL_SAFE_DELETES="a b"` | Adds names to the safe-delete list of the dangerous-command guard |
 | `REAL_SECRET_ALLOW="a b"` | Adds file names that the secret guard allows |
 
 Set the variable in the shell that starts the agent, or in front of one git command: `REAL_ALLOW_MAIN=1 git commit ...`.
 
 The notifier reads two more variables. `REAL_NOTIFY_WEBHOOK` holds a webhook URL, and `REAL_NOTIFY_WEBHOOK_FIELD` names the JSON field for the text. Set them in your environment. Never write a URL or a token in a file of a repo.
+
+## Show a result to the user
+
+`scripts/real-show.sh PATH` prints a Markdown link to a file or a folder, and the agent gives that link to you. A web file (`.html`, `.htm`, `.xhtml`, `.svg`) gets a local server link, and `curl` checks the title. `--open` runs `open -g` on macOS for a folder or a file, never for a web page or a URL. `--list` shows the servers and `--stop` ends one or all of them.
 
 ## Client support
 
@@ -138,7 +145,7 @@ Notes for each client:
 
 - Claude Code. The matcher of a PreToolUse hook is a tool name, such as `Bash`, or a list such as `Edit|Write`. A hook that prints JSON must exit with 0. Exit 2 blocks and sends stderr to the agent.
 - Codex. The matcher `apply_patch` also accepts the names `Edit` and `Write`. The hook input still says `apply_patch`. The patch text is in `tool_input.command`. The scripts here read that text for the secret guard and the test guard. Codex does not support `ask`, so the example runs the dangerous-command guard with `REAL_ASK_MODE=deny`. Codex hooks need a trust review before they run.
-- omp. It has no shell-command hooks. A hook is a TypeScript module in `.omp/hooks/pre/`. It calls `pi.on("tool_call", ...)` and returns `{ block: true, reason }`. This repo has no omp module. See the sketch below.
+- omp. It has no shell-command hooks. A hook is a TypeScript module in `.omp/hooks/pre/`. It calls `pi.on("tool_call", ...)` and returns `{ block: true, reason }`. This repo has no omp module. See the sketch below. An omp module runs the same shell scripts, so `real-open-guard.sh` works there too.
 
 Sources:
 
@@ -148,23 +155,27 @@ Sources:
 
 ### Sketch for omp (not tested)
 
-This sketch is not tested. It calls the Claude Code script for the dangerous-command guard. It shows the idea only.
+This sketch is not tested. It runs the Bash scripts `dangerous-command.sh` and `real-open-guard.sh` in turn. It blocks on the first exit 2. It shows the idea only.
 
 ```ts
-// .omp/hooks/pre/real-dangerous.ts
+// .omp/hooks/pre/real-guards.ts
 import { spawnSync } from "node:child_process";
 import { isToolCallEventType, type ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+
+const SCRIPTS = ["dangerous-command.sh", "real-open-guard.sh"];
 
 export default function realGuard(pi: ExtensionAPI) {
   pi.on("tool_call", (event) => {
     if (!isToolCallEventType("bash", event)) return;
     const input = JSON.stringify({ tool_name: "Bash", tool_input: { command: event.input.command } });
-    const run = spawnSync("/ABSOLUTE/PATH/TO/skills/hooks/claude/dangerous-command.sh", {
-      input,
-      env: { ...process.env, REAL_ASK_MODE: "deny" },
-      encoding: "utf8",
-    });
-    if (run.status === 2) return { block: true, reason: run.stderr.trim() };
+    for (const script of SCRIPTS) {
+      const run = spawnSync(`/ABSOLUTE/PATH/TO/skills/hooks/claude/${script}`, {
+        input,
+        env: { ...process.env, REAL_ASK_MODE: "deny" },
+        encoding: "utf8",
+      });
+      if (run.status === 2) return { block: true, reason: run.stderr.trim() };
+    }
   });
 }
 ```
@@ -186,8 +197,9 @@ export default function realGuard(pi: ExtensionAPI) {
 - The secret guard blocks by file name. It does not look at the content of a file.
 - The test-weakening guard counts test declarations. Moving a test to another file counts as a removal. Set `REAL_ALLOW_TEST_EDIT=1` for that move.
 - The Stop gate runs the checks of the whole repo. A slow test suite makes every turn slow. Set smaller commands in `.real-hooks`.
+- The open guard reads the command text. It does not catch a command built at run time, such as `$BROWSER`, `eval` or a variable that holds `open`. It does not catch `xargs open`, `find -exec open` or `osascript`. It knows only the browser binaries Google Chrome, Chromium and Firefox. Another browser that you start by its path, for example Safari or Edge, is not caught. `open -a` with any app is denied. It reads a here-document as commands, so a line that starts with `open` can cause a false deny. It reads a `-c` string down to three levels. It skips only the wrappers `sudo`, `command`, `exec`, `nohup`, `time` and `env`.
 - A user can bypass any hook. CI is the only enforcement.
 
 ## Test
 
-Run `sh scripts/test-hooks.sh`. The script makes temporary repos and a temporary HOME. It does not touch your files or your git config. It runs the Claude Code hook tests two times: with `jq` and without `jq`.
+Run `sh scripts/test-hooks.sh`. The script makes temporary repos and a temporary HOME. It does not touch your files or your git config. It runs the Claude Code hook tests two times: with `jq` and without `jq`. Run `sh scripts/test-real-show.sh` for the `real-show.sh` helper. That script uses a temporary HOME and stops only the servers that it started.

@@ -79,10 +79,10 @@ wf() { mkdir -p "$(dirname "$R/$1")"; printf '%s\n' "$2" > "$R/$1"; }
 
 # ---------- static checks ----------
 section "static checks"
-for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/install-hooks.sh "$ROOT"/scripts/test-hooks.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh; do
   if sh -n "$f" 2>/dev/null; then ok; else bad "syntax: $f"; fi
 done
-for f in "$H"/git/* "$CL"/*.sh; do
+for f in "$H"/git/* "$CL"/*.sh "$ROOT"/scripts/real-show.sh "$ROOT"/scripts/test-real-show.sh; do
   if [ -x "$f" ]; then ok; else bad "not executable: $f"; fi
 done
 for f in "$CL/settings.example.json" "$H/codex/hooks.example.json"; do
@@ -448,6 +448,121 @@ it('b', () => {})")"; expect_allow "a new test file (a move or rename has no old
   rm -f "$TMP"/notify-send.log
   run "$N" '{"hook_event_name":"PermissionRequest","tool_name":"Bash"}' "PATH=$stubs:$PATH" REAL_NOTIFY_OS=Linux
   has "Codex PermissionRequest is sent" "$(cat "$TMP/notify-send.log" 2>/dev/null)" "Bash"
+
+  section "claude PreToolUse open guard ($label)"
+  O=$CL/real-open-guard.sh
+  while IFS= read -r c; do
+    run "$O" "$(bj "$c" "$F")"; expect_block "open guard denies: $c"
+  done <<'EOF'
+open x.html
+open -g ~/x
+/usr/bin/open .
+sudo open x
+sudo -u me open x
+FOO=1 open x
+REAL_OPEN_GUARD=off open x
+env open x
+env FOO=1 open x
+command open x
+exec open x
+nohup open x &
+time open x
+cd a && open b
+ls; open b
+true || open b
+echo x | open -f
+x=$(open b)
+echo "$(open b)"
+echo `open b`
+sh -c 'open b'
+bash -c "cd a && open b"
+bash -lc 'open b'
+zsh -c 'open b'
+'open' x
+"open" x
+\open x
+xdg-open b
+gnome-open b
+sensible-browser b
+x-www-browser b
+open -a "Google Chrome" https://example.invalid
+python3 -m webbrowser https://example.invalid
+python -m webbrowser x
+google-chrome https://example.invalid
+chromium x
+chromium-browser x
+firefox x
+real-show.sh --open x && open y
+OPEN x
+Open -g x
+Firefox x
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" https://example.invalid
+exec -a foo open x
+exec -la foo open x
+2>/dev/null open x
+>out open x
+> out open x
+</dev/null open x
+FOO=1 2>&1 open x
+>out sudo open x
+env -S 'open x'
+env -S'open x'
+env --split-string='open x'
+env --split-string 'open x'
+env -a foo open x
+env --argv0 foo open x
+env -S -i open x
+env -iS 'open x'
+env -i -a foo FOO=1 open x
+gio open x
+EOF
+  run "$O" "$(bj 'open -g x' "$F")"
+  has "the reason names real-show.sh --open" "$ERR" "real-show.sh --open"
+  while IFS= read -r c; do
+    run "$O" "$(bj "$c" "$F")"; expect_allow "open guard allows: $c"
+  done <<'EOF'
+git commit -m "open the door"
+git commit -m "fix; open the door"
+echo "a && open b"
+grep -r open src
+echo open
+cat open.txt
+cat open
+touch open
+npm run open-docs
+openssl version
+opener x
+python3 -m http.server
+python3 -c "print(1)"
+real-show.sh --open x
+./scripts/real-show.sh --open x
+/opt/skills/scripts/real-show.sh --url https://example.invalid --open
+sh scripts/real-show.sh --open x
+bash ./real-show.sh --open x
+google-chrome --headless --screenshot x
+chromium --headless=new --dump-dom x
+firefox --headless x
+echo x > open
+cat < open
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --dump-dom x
+exec -a foo ls
+env -S 'ls -la'
+env -S 'ls -la' open
+env -a foo ls
+env -S 'FOO=1 ls' x
+gio info x
+EOF
+  long=$(awk 'BEGIN { for (i = 0; i < 14000; i++) printf "aaaaaaaaaa" }')
+  run "$O" "$(bj "open x; echo $long" "$F")"; expect_block "open guard denies a command of 140 KB"
+  run "$O" "$(bj "echo $long" "$F")"; expect_allow "open guard allows a harmless command of 140 KB"
+  run "$O" "$(fj Read x.txt)"; expect_allow "open guard ignores a non-Bash tool"
+  run "$O" "$(bj '' "$F")"; expect_allow "open guard ignores an empty command"
+  run "$O" "$(bj 'open x' "$F")" REAL_OPEN_GUARD=off; expect_allow "REAL_OPEN_GUARD=off in the hook environment"
+  printf 'open.guard = off\n' > "$F/.real-hooks"
+  run "$O" "$(bj 'open x' "$F")"; expect_allow "open.guard = off in .real-hooks"
+  printf 'open.guard = on\n' > "$F/.real-hooks"
+  run "$O" "$(bj 'open x' "$F")"; expect_block "open.guard = on in .real-hooks"
+  rm -f "$F/.real-hooks"
 done
 NOJQ=0
 

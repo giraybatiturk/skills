@@ -14,7 +14,8 @@
         "matcher": "Bash",
         "hooks": [
           { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/pre-tool-use.sh", "timeout": 10 },
-          { "type": "command", "command": "REAL_ASK_MODE=deny /ABSOLUTE/PATH/TO/skills/hooks/claude/dangerous-command.sh", "timeout": 10 }
+          { "type": "command", "command": "REAL_ASK_MODE=deny /ABSOLUTE/PATH/TO/skills/hooks/claude/dangerous-command.sh", "timeout": 10 },
+          { "type": "command", "command": "/ABSOLUTE/PATH/TO/skills/hooks/claude/real-open-guard.sh", "timeout": 10 }
         ]
       },
       {
