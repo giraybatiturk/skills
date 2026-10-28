@@ -262,6 +262,37 @@ export default function realGuard(pi: ExtensionAPI) {
 }
 ```
 
+### Command for omp (not tested)
+
+This sketch is not tested. It adds the command `/real-ship` to omp. The command sends the instruction of `commands/real-ship.md` to the agent. The agent runs `scripts/real-ship.sh`. Codex has no command file. The agent calls the script by name.
+
+```ts
+// .omp/extensions/real-ship.ts
+import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+
+const SCRIPT = "/ABSOLUTE/PATH/TO/skills/scripts/real-ship.sh";
+
+export default function realShip(pi: ExtensionAPI) {
+  pi.registerCommand("real-ship", {
+    description: "Commit, push and open the PR or MR. Never merges.",
+    handler: async (args: string) => {
+      pi.sendUserMessage(
+        [
+          "/real-ship is the explicit user request to commit and push.",
+          `Run one command: sh "${SCRIPT}" ${args.trim()}`,
+          "Pass the arguments as they are. Do not add flags. Add --no-suite-check only when the user typed it.",
+          "Do not run git commit, git push, gh or glab yourself for this request.",
+          "If the user gave no -m and the project rule sets another commit language, write the message in that language and pass it with -m.",
+          "Show the stdout lines to the user as they are.",
+          "On a refusal, show the one refusal line and stop. Do not work around a refusal.",
+          "Never merge.",
+        ].join("\n"),
+      );
+    },
+  });
+}
+```
+
 ## What is not included
 
 - **A Stop hook that looks for evidence in the last message.** The idea was to read the last message of the agent and look for proof, such as a test result. A text search is not reliable. A careful agent fails it, and a careless agent passes it. The Stop gate replaces it. The gate runs the real commands, so it needs no guess.
@@ -291,3 +322,4 @@ export default function realGuard(pi: ExtensionAPI) {
 Run `sh scripts/test-hooks.sh`. The script makes temporary repos and a temporary HOME. It does not touch your files or your git config. It runs the Claude Code hook tests two times: with `jq` and without `jq`. Run `sh scripts/test-real-show.sh` for the `real-show.sh` helper. That script uses a temporary HOME and stops only the servers that it started.
 
 Run `sh scripts/test-real-status.sh` for `scripts/real-status.sh`. It uses temporary repos, a temporary HOME and a temporary state folder.
+Run `sh scripts/test-real-ship.sh` for `real-ship.sh`. That script uses a temporary repo, a bare remote and stubs for `gh` and `glab`. It never calls the real tools.
