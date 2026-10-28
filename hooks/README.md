@@ -148,6 +148,7 @@ The state folder is `${XDG_STATE_HOME:-$HOME/.local/state}/real/turn/<key>/`. Th
 | `state` | The text after `STATE:` in the last STATE line of the reply. The hook removes the file when the reply has no STATE line |
 | `jobs` | The background tasks that run at the last Stop, one for each line, at most 5. Needs Claude Code and `jq`. The hook removes the file when no task runs |
 | `status_prompt` | Epoch seconds, written at UserPromptSubmit of a `/real-status` prompt. While it is set, a Stop with no STATE line changes no file. The next real prompt removes the file |
+| `wait.<pid>` | Written by `scripts/real-await.sh` while it waits. One line: `<start> <deadline> <probe> <message>`. The script removes it at the end. Two waits have two files. A new wait removes a file with a past deadline or a dead PID |
 
 A `turn_end` that is older than `turn_start` means a turn runs now, or the last turn ended with no Stop. Each file holds one line, except `jobs`. The hook writes with `umask 077`. The mask covers these values:
 
@@ -196,6 +197,7 @@ The banner comes at Stop when the turn lasted `notify.min-seconds` or longer (de
 - Line 3: the last 3 commands of `.real/evidence.jsonl` with their exit codes.
 - Line 4: the turn state, its age and the last request. A running turn shows `running for <age>`.
 - Line 5: the background jobs of the last Stop.
+- Line 6: `waiting: <message> (<time> left)` for each live `wait.<pid>` file, at most 3, separated by `;`. A file with a past deadline, or with a PID that does not run, is skipped.
 
 A line with no data is skipped. Each line is cleaned, masked and cut to 160 characters. You can run `sh scripts/real-status.sh [DIR]` in any shell.
 
@@ -396,3 +398,5 @@ Run `sh scripts/test-real-status.sh` for `scripts/real-status.sh`. It uses tempo
 Run `sh scripts/test-real-ship.sh` for `real-ship.sh`. That script uses a temporary repo, a bare remote and stubs for `gh` and `glab`. It never calls the real tools.
 
 Run `sh scripts/test-real-context.sh` for the context hook, the handoff file and `scripts/real-mem.sh`. It runs each hook case with `jq` and without `jq`. It uses stubs for `gh`, `curl` and the memory command, so it needs no live service and no token.
+
+Run `sh scripts/test-real-await.sh` for `scripts/real-await.sh`. It uses temporary repos, a temporary HOME and stub tools. It stops only the processes that it started.
