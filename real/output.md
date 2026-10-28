@@ -15,8 +15,16 @@
 - Verify with `curl` that the `<title>` of the page belongs to the expected file. A 200 alone is not enough.
 - Give the link as `[name](http://127.0.0.1:<port>/file.html)`.
 <!-- Why: A 200 can come from the server of another session on the same port. -->
-- If the user says "open", or says that a link did not open, also open it with `open`.
-- In all other cases, do not open generated PDFs or files with `open`. Give a link. The user opens it.
+
+## Open on request
+- To open or show a file, a folder or a URL for the user, run `real-show.sh --open <target>`.
+- On macOS the helper opens a file or a folder in the background. The app does not take focus.
+- For a web page, the helper prints the link only. Give that link to the user. Do not open the page.
+- If `real-show.sh` is not available, run `open -g <path>` for a file or a folder. Give a link for a web page.
+- If the user says that a link did not open, check the scheme and the page title. Then give the link again.
+- Do not open a page, a file or a window during a test, a screenshot or a build. Use the own headless browser.
+- Do not run `open`, `xdg-open` or a browser command for any other reason. A hook can deny these commands.
+<!-- Why: A test showed that `open -g` still makes a new tab the active tab. Without `-g`, the app also takes focus. A page that opens by itself interrupts the user. One helper keeps the link, the title check and the open rule in one place. -->
 
 ## Generated documents and artifacts
 - Give every generated HTML document or print source a fixed white background.
@@ -36,3 +44,18 @@
 - When the job ends, move the final file to the documents folder. Give the user the link from there.
 - Keep the concrete folder layout in the private overlay.
 <!-- Why: Output left in a scratch folder was lost. -->
+
+## Text to paste elsewhere
+- Text that the user will paste elsewhere is, for example, a message, an email, a prompt or a reply.
+- Put that text alone in one fenced block. Put your explanation outside the block.
+- If the text is longer than 40 lines, write it to a `.txt` file. Give the link to the file.
+- Do not add bullet markers, hard line breaks inside a paragraph or indents in the block.
+- If the text contains a fence, use a longer fence around it.
+<!-- Why: A bullet list or a wrapped paragraph copies with extra characters. -->
+
+## End of a long turn
+- End a turn that took more than one minute with one last line.
+- The line is `STATE: done`, `STATE: blocked - <what you need from the user>` or `STATE: failed - <what failed>`.
+- Write the text after the hyphen in the language of the user.
+- Do not add this line to short answers.
+<!-- Why: A tool can read this line to send a notification. The user sees the state at once. -->

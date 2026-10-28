@@ -35,3 +35,16 @@ Do these steps when a screen, component or published page changes. Do not skip a
 - A published interface change is an externally visible change. It starts orchestration. A separate reviewer verifies the measurement.
 - `real-audit` Design mode already asks for measured narrow-viewport tests. This file adds the numbers and the fix-in-source rule.
 - Open difference: `design-rules.md` says not to invent a universal touch-target threshold. The 40 px figure comes from the original rule. The user decides which rule governs.
+
+## Screenshot and remark loop
+Use this loop when the user sends a screenshot with a short remark about the interface.
+1. Read the image and the remark. Say the change in one line.
+2. Make the smallest change that answers the remark. Fix it in the source.
+3. Capture "before" once for the task, at 375 px and at 1280 px.
+4. Capture "after" at both widths after each change.
+5. Measure both widths with the order above. Report the numbers: sideways scroll, targets under 40 px, long text that does not wrap.
+6. Show before and after side by side on one page with a white background. Give the link.
+7. Use the `real-shot` mode of `real-test` for steps 3 to 6. It writes the images, the numbers and the comparison page.
+8. Do not write "looks fine" without numbers.
+9. If the remark is ambiguous, make the most likely change and show it. Do not ask first.
+<!-- Why: Most interface feedback is a screenshot with a short remark. Without a before and after and without numbers, each remark needed many rounds. -->

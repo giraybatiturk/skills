@@ -13,6 +13,7 @@
 - Name the live test that the user must do before sending.
 - Compare each sentence of a draft with its source, one by one.
 - Delete each sentence that has no source.
+- To give the draft to the user, follow the section "Text to paste elsewhere" in `real/output.md`.
 <!-- Why: A sent message cannot be unsent. -->
 
 ## Language of files and text

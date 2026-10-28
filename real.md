@@ -81,7 +81,7 @@ These files follow ASD-STE100 style. See `docs/ste-glossary.md`.
 - real/feature-flow.md: before you code a new feature or product change.
 - real/models-and-orchestration.md: choose models, start agents, split work.
 - real/browser.md: a browser, a login or a web session.
-- real/output.md: links, files, HTML previews, deliverables.
+- real/output.md: links, opening files, HTML previews, deliverables, text to paste, the last line of a turn.
 - real/drafts.md: text for other people. Language of files, commits and PRs.
 - real/git-tests.md: the test suite before a push.
 - real/real-skills.md: route product work, install the real-* skills.
