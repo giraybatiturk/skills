@@ -11,7 +11,7 @@ This glossary fixes one word for each idea. Use the word in the first column. Do
 - Do not use `should`, `may` or `might`. Write "do" or "do not".
 - Keep product names, tool names, model and tier names, and skill names as they are.
 - Keep every command, file path, number and code block as it is.
-- Run `scripts/ste-lint.py` on a file to find long sentences and banned words.
+- Run `scripts/ste-lint.py` on a file to find long sentences and banned words. It also prints NOTE lines for semicolons, phrasal verbs, marketing adjectives, nominalizations, passive voice and present perfect.
 
 ## Fixed terms
 | Use | Meaning | Do not use |

@@ -88,7 +88,7 @@ If a family is unavailable, use the nearest capability tier. The verifier cannot
 
 ## Writing standard
 
-The `real` working rules (`real.md` and `real/`) follow ASD-STE100 Simplified Technical English style. The glossary of fixed terms is in [docs/ste-glossary.md](docs/ste-glossary.md). Run `python3 scripts/ste-lint.py real.md real/*.md` to find long sentences and banned words.
+The `real` working rules (`real.md` and `real/`) follow ASD-STE100 Simplified Technical English style. The glossary of fixed terms is in [docs/ste-glossary.md](docs/ste-glossary.md). Run `python3 scripts/ste-lint.py real.md real/*.md` to find long sentences and banned words. The lint also prints advisory NOTE lines (semicolon, phrasal verb, marketing adjective, nominalization, passive voice, present perfect). The patterns come from [danyuchn/asd-ste100-skill](https://github.com/danyuchn/asd-ste100-skill) (MIT). NOTE lines do not change the exit code.
 
 ## Install
 
