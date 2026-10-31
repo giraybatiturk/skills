@@ -293,6 +293,16 @@ expect_silent "silent when core.hooksPath is the installed path"
 git -C "$R" config core.hooksPath "$TMP/ss/other"
 run "$CL/session-start.sh" "$J"
 has "warns when core.hooksPath changed" "$OUT" "changed"
+# a global hooksPath with ~ (no real.hooksPath): git expands ~, so the check must too
+git -C "$R" config --unset core.hooksPath; git -C "$R" config --unset real.hooksPath
+mkdir -p "$HOME/ghooks"; printf '#!/bin/sh\n# real-hooks-managed\n' > "$HOME/ghooks/pre-commit"
+git -C "$R" config core.hooksPath '~/ghooks'
+run "$CL/session-start.sh" "$J"
+expect_silent "silent when core.hooksPath is ~/ with a real pre-commit"
+rm -f "$HOME/ghooks/pre-commit"
+run "$CL/session-start.sh" "$J"
+has "warns when core.hooksPath is ~/ without a real pre-commit" "$OUT" "no real pre-commit"
+git -C "$R" config core.hooksPath "$TMP/ss/other"; git -C "$R" config real.hooksPath "$TMP/ss/hp"
 
 # ---------- contract script finder (skill folder) ----------
 section "real-contract.sh finder in the skill folder"

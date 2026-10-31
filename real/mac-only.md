@@ -11,8 +11,6 @@ These rules apply on macOS only.
 - Run one build at a time.
 - Before you start, run `pgrep -fl "xcodebuild|swift-build|swift-frontend"`.
 - If another session builds, wait for it. Do not start a second build.
-- Run at most 3 agents in parallel. Run discovery and scanning on the fastest tier.
-- Run 4 or more agents only when the user asks (see `models-and-orchestration.md`).
 - When the job ends, close background processes: dev server, `http.server`, watchers, simulator.
 - At the end of the session, run `pgrep` to find processes that remain.
 - Keep project-specific load rules in the private overlay.

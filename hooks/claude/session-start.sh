@@ -17,7 +17,8 @@ git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1 || exit 0
 
 has_marker() { [ -f "$1/pre-commit" ] && grep -q 'real-hooks-managed' "$1/pre-commit"; }
 
-hp=$(git -C "$cwd" config --get core.hooksPath 2>/dev/null || true)
+# --type=path expands a leading ~ the way git does when it runs the hooks.
+hp=$(git -C "$cwd" config --type=path --get core.hooksPath 2>/dev/null || true)
 expected=$(git -C "$cwd" config --get real.hooksPath 2>/dev/null || true)
 problem=
 if [ -z "$hp" ]; then

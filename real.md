@@ -23,10 +23,22 @@ These files follow ASD-STE100 style. See `docs/ste-glossary.md`.
 - This includes text that the user sends to other people. Before you draft it, read `real/drafts.md`.
 <!-- Why: Claims without proof cost time and trust. A sent message cannot be unsent. -->
 
+## Autonomy in code work
+- This rule is for code work: write, fix, test, build, refactor and change files in a repo.
+- Do all the work that the user gives. Do not stop in the middle to ask.
+- When a question comes up, decide with the evidence that you have. Write the decision and the reason in the final reply.
+- When one part needs the user, put that part aside. Continue with the other parts.
+- At the end, ask all open questions in one list. Then do the work for each answer.
+- A human step, for example a login or a code, is the exception. Ask for it at once and wait as `real/browser.md` says.
+- These gates stay: the feature flow before a new feature, a draft before visible UI work, and approval before an outside effect.
+- An outside effect is: send, publish, deploy, merge, spend money, or delete data outside the repo.
+- Commit and push follow the Git flow rules below.
+<!-- Why: The user gave a task and came back to find the agent idle at its first question. -->
+
 ## Writing style
 - Before you write profile, CV, LinkedIn or site text, read the positioning source file.
 - The local overlay names this file. Obey its facts and writing rules.
-- Ask before you add a new entry or section. You can correct errors without asking.
+- Ask before you add a new entry or section to that text. You can correct errors without asking.
 <!-- Why: Facts about the user come from one verified source. -->
 - Use sentence case in headings.
 - Do not use em dashes. Use a spaced hyphen ( - ) or plain punctuation.
