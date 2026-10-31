@@ -33,7 +33,7 @@ The README model table and `real-audit` `references/orchestration.md` have the f
 <!-- Why: A cheap model reported that something was missing, but it existed. -->
 - Give the model explicitly on every agent or workflow call. Do not leave it empty. An empty model falls back to the strongest model.
 - Run at most 3 agents in parallel. Run discovery and scanning on the fastest tier.
-- Run 4 or more agents only when the user asks (see `mac-only.md`).
+- Run 4 or more agents only when the user asks. The limit protects the load of the local machine.
 
 ## Claude Code / omp only
 - Write code with a dedicated coding agent on the mid tier at high effort. Use it for a new feature, phase, screen or multi-file work.

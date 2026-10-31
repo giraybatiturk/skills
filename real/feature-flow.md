@@ -13,7 +13,7 @@ This file lists the five headings so that none is lost.
 
 ## Extra rules
 - Do not skip this order. If the user says "keep it quick", shorten it. Do not skip it.
-- Show the five headings to the user. Get approval before you open any file.
+- Show the five headings to the user. Get approval before you change any file. You can read files for the analysis.
 - If you cannot verify something, write "could not measure" in the analysis. Examples: backend contract, allow list, third-party behaviour.
 - Name who will verify it.
 <!-- Why: Code first leaves the backend missing or the contract wrong. The error then shows up live. -->
