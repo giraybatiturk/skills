@@ -10,7 +10,7 @@ The README describes the connected workflows. They help you decide what to build
 - `real-check`: quick automated scan of a public URL, with a one-page report for the user. It is not a done check for your own work.
 - `real-test`: Playwright tests for the key user flows of your own web app. Steps: plan, generate, run, heal once, report.
 - `real-research`: resolve current external facts from primary sources.
-- `real-measure`: after release, judge with live data if a change hit its goal. It is read-only.
+- `real-measure`: after release, judge with live data if a change hit its goal. It changes nothing.
 
 ## Routing
 - For work that spans skills, use this order:

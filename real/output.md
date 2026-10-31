@@ -36,7 +36,7 @@
 
 ## Where output goes
 - Put finished output in the documents folder that the local overlay names, under `<project>/<topic>/`.
-- Finished output is an image, video, PDF or mockup that is sent, uploaded or shared.
+- Finished output is an image, video, PDF or mockup that the user sends, uploads or shares.
 - Name files `<topic>-<what>.<ext>`: lowercase, hyphens, no spaces, no non-ASCII characters.
 - `<project>` is a short name.
 - Keep source (templates, scripts, the HTML that makes the output) in the project's repo.

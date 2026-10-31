@@ -171,7 +171,8 @@ term() { # term CMDSTRING: runs the command with a terminal on stdin. Sets RC an
     linux) env PATH="$PPATH" script -qec "$1" /dev/null </dev/null >"$TMP/term.out" 2>&1 || RC=$? ;;
     bsd) env PATH="$PPATH" script -q /dev/null sh -c "$1" </dev/null >"$TMP/term.out" 2>&1 || RC=$? ;;
   esac
-  OUT=$(tr -d '\r' < "$TMP/term.out")
+  # macOS script echoes the EOF of the closed stdin as "^D" and two backspaces before the output.
+  OUT=$(tr -d '\r' < "$TMP/term.out" | sed "s/^^D$(printf '\b\b')//")
 }
 
 # ---------- static ----------
@@ -864,7 +865,7 @@ EOF
 - id: hostile
   tool: mcp__h__*
   mode: ask
-  why: \$(touch $TMP/pwn/PWNED) \`touch $TMP/pwn/PWNED2\`; touch $TMP/pwn/PWNED3 %s %d \\n \\ "dq" 'sq' \\033[31m \\u001b[0m
+  why: touch $TMP/pwn/PWNED3 %s %d; \$(touch $TMP/pwn/PWNED) \`touch $TMP/pwn/PWNED2\` \\n \\ "dq" 'sq' \\033[31m \\u001b[0m
 EOF
   hook "$(jt mcp__h__create_x)" REAL_APPROVALS="$TMP/h10.yml"
   expect_ask "hostile reason: ask" hostile
